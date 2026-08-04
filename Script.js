@@ -436,7 +436,7 @@ function updateDonationMonth() {
     const progressText = document.querySelector('.progress-text');
     
     if (progressText) {
-        progressText.textContent = `${currentMonth} Goal: $91 out of $91`;
+        progressText.textContent = `${currentMonth} Goal: $0 out of $91`;
     }
 }
 
