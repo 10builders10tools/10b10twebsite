@@ -1,12 +1,23 @@
-function copyIP() {
-    navigator.clipboard.writeText('10b10t.com').then(() => {
-        const btn = document.querySelector('.copy-btn');
-        const originalText = btn.textContent;
-        btn.textContent = 'Copied!';
-        setTimeout(() => {
-            btn.textContent = originalText;
-        }, 2000);
-    });
+function copyIP(event) {
+    const btn = (event && event.currentTarget) || document.querySelector('.copy-btn');
+
+    const flash = (msg) => {
+        if (!btn) return;
+        const original = btn.dataset.label || btn.textContent;
+        btn.dataset.label = original;
+        btn.textContent = msg;
+        setTimeout(() => { btn.textContent = btn.dataset.label; }, 2000);
+    };
+
+    // navigator.clipboard is undefined outside a secure context (e.g. file://)
+    if (!navigator.clipboard) {
+        flash('Copy failed');
+        return;
+    }
+
+    navigator.clipboard.writeText('10b10t.com')
+        .then(() => flash('Copied!'))
+        .catch(() => flash('Copy failed'));
 }
 
 const serverMOTDs = [
@@ -112,23 +123,37 @@ function initGallery() {
     });
 }
 
+function setStatusDot(state) {
+    const dot = document.getElementById('status-dot');
+    if (dot) dot.className = `dot ${state}`;
+
+    const bars = document.getElementById('ping-bars');
+    if (bars) bars.className = `ping-bars ${state}`;
+}
+
 async function updateServerStatus() {
     const API = 'https://api.10b10t.com';
-    
+
+    // terms.html / privacy.html share this script but have no status readout
+    const statusEl = document.getElementById('server-status');
+    if (!statusEl) return;
+
     try {
         const response = await fetch(`${API}/api/stats`);
         const data = await response.json();
 
-        const statusEl = document.getElementById('server-status');
         const playerCountEl = document.getElementById('player-count');
         const tpsEl = document.getElementById('server-tps');
 
         if (data.online) {
             statusEl.textContent = 'Online';
             statusEl.className = 'status-value online';
-            
-            playerCountEl.textContent = `${data.players_online} / ${data.players_max}`;
-            
+            setStatusDot('online');
+
+            if (playerCountEl) {
+                playerCountEl.textContent = `${data.players_online} / ${data.players_max}`;
+            }
+
             if (tpsEl) {
                 const tps = data.tps.toFixed(1);
                 tpsEl.textContent = `${tps} TPS`;
@@ -168,16 +193,21 @@ async function updateServerStatus() {
         } else {
             statusEl.textContent = 'Offline';
             statusEl.className = 'status-value offline';
-            playerCountEl.textContent = '0 / 0';
+            setStatusDot('offline');
+            if (playerCountEl) playerCountEl.textContent = '0 / 0';
             if (tpsEl) tpsEl.textContent = '-';
         }
-        
+
         await updatePlayerList(API);
-        
+
     } catch (error) {
         console.error('Failed to fetch server status:', error);
-        document.getElementById('server-status').textContent = 'Error';
-        document.getElementById('server-status').className = 'status-value offline';
+        const statusEl = document.getElementById('server-status');
+        if (statusEl) {
+            statusEl.textContent = 'Error';
+            statusEl.className = 'status-value offline';
+        }
+        setStatusDot('offline');
     }
 }
 
@@ -226,16 +256,21 @@ async function updatePlayerList(api) {
     }
 }
 
+function scrollChatToBottom() {
+    const chatContainer = document.getElementById('live-chat');
+    if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
 async function updateLiveChat() {
     const API = 'https://api.10b10t.com';
-    
+
+    const chatContainer = document.getElementById('live-chat');
+    if (!chatContainer) return;
+
     try {
         const response = await fetch(`${API}/api/chat`);
         const data = await response.json();
-        
-        const chatContainer = document.getElementById('live-chat');
-        if (!chatContainer) return;
-        
+
         if (data.online && data.messages && data.messages.length > 0) {
             chatContainer.innerHTML = '';
             
@@ -261,16 +296,13 @@ async function updateLiveChat() {
                 chatContainer.appendChild(msgEl);
             });
             
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            scrollChatToBottom();
         } else {
             chatContainer.innerHTML = '<div style="color: #888888; padding: 1rem; font-family: Courier New, monospace;">[INFO] No recent chat messages</div>';
         }
     } catch (error) {
         console.error('Failed to fetch chat:', error);
-        const chatContainer = document.getElementById('live-chat');
-        if (chatContainer) {
-            chatContainer.innerHTML = '<div style="color: #FF5555; padding: 1rem; font-family: Courier New, monospace;">[ERROR] Failed to connect to server console</div>';
-        }
+        chatContainer.innerHTML = '<div style="color: #FF5555; padding: 1rem; font-family: Courier New, monospace;">[ERROR] Failed to connect to server console</div>';
     }
 }
 
@@ -285,70 +317,115 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-function initSmoothScroll() {
-    const navLinks = document.querySelectorAll('.nav-link');
-    
-    navLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            const href = link.getAttribute('href');
-            
-            // Skip external links
-            if (!href || !href.startsWith('#')) {
-                return;
-            }
-            
-            e.preventDefault();
-            
-            navLinks.forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
-            
-            const targetId = href.substring(1);
-            const targetSection = document.getElementById(targetId);
-            
-            if (targetSection) {
-                const navbar = document.querySelector('.navbar');
-                const navbarHeight = navbar ? navbar.offsetHeight : 0;
-                const targetPosition = targetSection.getBoundingClientRect().top + window.pageYOffset - navbarHeight;
-                
-                window.scrollTo({
-                    top: targetPosition,
-                    behavior: 'smooth'
-                });
-            }
+/* View router. One view is visible at a time; the hash is the source of
+   truth so inbound links from terms.html/privacy.html land correctly. */
+const VIEW_TITLES = {
+    home: 'Main Menu',
+    server: 'Multiplayer',
+    dupes: 'Dupes',
+    news: 'News',
+    gallery: 'Gallery',
+    about: 'Statistics',
+    donate: 'Support the Server'
+};
+
+// Old anchors that no longer have their own screen
+const VIEW_ALIASES = {
+    chat: 'server'
+};
+
+function showView(id) {
+    const target = VIEW_ALIASES[id] || id;
+    const view = document.getElementById(target);
+
+    if (!view || !view.classList.contains('view')) {
+        if (target !== 'home') showView('home');
+        return;
+    }
+
+    document.querySelectorAll('.view').forEach(v => {
+        v.classList.toggle('active', v === view);
+    });
+
+    document.querySelectorAll('.nav-link').forEach(link => {
+        const href = link.getAttribute('href');
+        link.classList.toggle('active', href === `#${target}`);
+    });
+
+    document.title = target === 'home'
+        ? '10b10t'
+        : `${VIEW_TITLES[target] || target} - 10b10t`;
+
+    const title = document.getElementById('view-title');
+    if (title) title.textContent = VIEW_TITLES[target] || target;
+
+    window.scrollTo({ top: 0, behavior: 'auto' });
+
+    // scrollHeight is 0 while a screen is hidden, so pin the chat once visible
+    if (target === 'server') scrollChatToBottom();
+}
+
+function routeFromHash() {
+    const id = (location.hash || '#home').substring(1);
+    showView(id || 'home');
+}
+
+function initRouter() {
+    window.addEventListener('hashchange', routeFromHash);
+    routeFromHash();
+}
+
+/* Hotbar: number keys 1-7 select a slot, the way they would in game */
+function initHotbarKeys() {
+    const slots = [...document.querySelectorAll('.hotbar .nav-link')];
+    if (!slots.length) return;
+
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        const tag = document.activeElement && document.activeElement.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+        const n = parseInt(e.key, 10);
+        if (!n || n < 1 || n > slots.length) return;
+
+        const href = slots[n - 1].getAttribute('href');
+        if (!href) return;
+
+        // Slots 8 and 9 are the legal pages: a real navigation, not a hash change
+        if (href.startsWith('#')) {
+            location.hash = href;
+        } else {
+            location.href = href;
+        }
+    });
+}
+
+/* Dupes inventory: picking a slot swaps the detail panel.
+   Every dupe is already in the DOM; this only toggles which one shows. */
+function initDupePicker() {
+    const slotWrap = document.getElementById('inv-slots');
+    if (!slotWrap) return;
+
+    slotWrap.addEventListener('click', (e) => {
+        const slot = e.target.closest('.slot');
+        if (!slot) return;
+
+        const detail = document.getElementById(slot.dataset.target);
+        if (!detail) return;
+
+        slotWrap.querySelectorAll('.slot').forEach(s => {
+            s.classList.toggle('active', s === slot);
+        });
+        document.querySelectorAll('.dupe-detail').forEach(d => {
+            d.classList.toggle('active', d === detail);
         });
     });
 }
 
-function initScrollSpy() {
-    const sections = document.querySelectorAll('section[id]');
-    const navLinks = document.querySelectorAll('.nav-link');
-    
-    window.addEventListener('scroll', () => {
-        let current = '';
-        const scrollPosition = window.pageYOffset;
-        
-        sections.forEach(section => {
-            const sectionTop = section.offsetTop - 100;
-            const sectionHeight = section.offsetHeight;
-            
-            if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
-                current = section.getAttribute('id');
-            }
-        });
-        
-        navLinks.forEach(link => {
-            const href = link.getAttribute('href');
-            
-            // Skip external links
-            if (!href || !href.startsWith('#')) {
-                return;
-            }
-            
-            link.classList.remove('active');
-            if (href === `#${current}`) {
-                link.classList.add('active');
-            }
-        });
+function initCopyButton() {
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', copyIP);
     });
 }
 
@@ -366,16 +443,14 @@ function updateDonationMonth() {
 document.addEventListener('DOMContentLoaded', () => {
     updateHeroMOTD();
     initGallery();
-    initSmoothScroll();
-    initScrollSpy();
+    initCopyButton();
+    initDupePicker();
+    initHotbarKeys();
+    initRouter();
     updateServerStatus();
     updateDonationMonth();
     updateLiveChat();
-    
+
     setInterval(updateServerStatus, 60000);
     setInterval(updateLiveChat, 10000);
-});
-
-document.querySelector('.scroll-indicator')?.addEventListener('click', () => {
-    document.querySelector('.navbar').scrollIntoView({ behavior: 'smooth' });
 });
