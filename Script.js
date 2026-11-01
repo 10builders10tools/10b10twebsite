@@ -106,12 +106,16 @@ function initGallery() {
     const container = document.getElementById('gallery-container');
     if (!container) return;
 
-    galleryImages.forEach(img => {
+    galleryImages.forEach((img, index) => {
+        // Still a real link, so ctrl/middle-click can open the file in a tab on purpose
         const item = document.createElement('a');
         item.href = `images/${img}`;
-        item.target = '_blank';
-        item.rel = 'noopener noreferrer';
         item.className = 'gallery-item';
+        item.addEventListener('click', e => {
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+            e.preventDefault();
+            openViewer(index, item);
+        });
 
         const image = document.createElement('img');
         image.src = `images/${img}`;
@@ -123,12 +127,120 @@ function initGallery() {
     });
 }
 
+// ---------- Image viewer ----------
+
+let viewer = null;
+let viewerIndex = 0;
+let viewerReturnFocus = null;
+
+function buildViewer() {
+    const el = document.createElement('div');
+    el.className = 'viewer';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-label', 'Image viewer');
+    el.hidden = true;
+    el.innerHTML = `
+        <div class="viewer-frame">
+            <img class="viewer-img" alt="">
+            <div class="viewer-bar">
+                <button type="button" class="viewer-btn viewer-prev" aria-label="Previous image">&#9664;</button>
+                <span class="viewer-count"></span>
+                <button type="button" class="viewer-btn viewer-next" aria-label="Next image">&#9654;</button>
+                <button type="button" class="viewer-btn viewer-close" aria-label="Close">&#10005;</button>
+            </div>
+        </div>`;
+    document.body.appendChild(el);
+
+    el.querySelector('.viewer-prev').addEventListener('click', () => stepViewer(-1));
+    el.querySelector('.viewer-next').addEventListener('click', () => stepViewer(1));
+    el.querySelector('.viewer-close').addEventListener('click', closeViewer);
+    // Tapping the dark backdrop (not the picture or the buttons) closes it
+    el.addEventListener('click', e => { if (e.target === el) closeViewer(); });
+
+    // Swipe left/right on touch screens
+    let startX = null, startY = 0;
+    el.addEventListener('touchstart', e => {
+        if (e.touches.length !== 1) { startX = null; return; }
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+    }, { passive: true });
+    el.addEventListener('touchend', e => {
+        if (startX === null) return;
+        const dx = e.changedTouches[0].clientX - startX;
+        const dy = e.changedTouches[0].clientY - startY;
+        startX = null;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) stepViewer(dx < 0 ? 1 : -1);
+    });
+
+    document.addEventListener('keydown', e => {
+        if (!viewer || viewer.hidden) return;
+        if (e.key === 'Escape') closeViewer();
+        else if (e.key === 'ArrowLeft') stepViewer(-1);
+        else if (e.key === 'ArrowRight') stepViewer(1);
+        else if (e.key === 'Tab') {
+            // keep keyboard focus inside the viewer while it is open
+            const buttons = [...viewer.querySelectorAll('button')];
+            const i = buttons.indexOf(document.activeElement);
+            const next = e.shiftKey ? (i <= 0 ? buttons.length - 1 : i - 1) : (i + 1) % buttons.length;
+            buttons[next].focus();
+            e.preventDefault();
+        }
+    });
+
+    return el;
+}
+
+function showViewerImage() {
+    const name = galleryImages[viewerIndex];
+    const img = viewer.querySelector('.viewer-img');
+    img.src = `images/${name}`;
+    img.alt = name.replace('.png', '').replace('_', ' ');
+    viewer.querySelector('.viewer-count').textContent = `${viewerIndex + 1} / ${galleryImages.length}`;
+}
+
+function openViewer(index, returnFocus) {
+    if (!viewer) viewer = buildViewer();
+    viewerIndex = index;
+    viewerReturnFocus = returnFocus || null;
+    showViewerImage();
+    viewer.hidden = false;
+    document.body.classList.add('viewer-open');
+    viewer.querySelector('.viewer-close').focus();
+}
+
+function stepViewer(delta) {
+    viewerIndex = (viewerIndex + delta + galleryImages.length) % galleryImages.length;
+    showViewerImage();
+}
+
+function closeViewer() {
+    if (!viewer || viewer.hidden) return;
+    viewer.hidden = true;
+    document.body.classList.remove('viewer-open');
+    if (viewerReturnFocus) viewerReturnFocus.focus();
+}
+
 function setStatusDot(state) {
     const dot = document.getElementById('status-dot');
     if (dot) dot.className = `dot ${state}`;
 
     const bars = document.getElementById('ping-bars');
     if (bars) bars.className = `ping-bars ${state}`;
+}
+
+// Accounts left out of the public player list and online count
+const HIDDEN_PLAYERS = ['toastedavacado'];
+
+function isHiddenPlayer(name) {
+    return HIDDEN_PLAYERS.includes(String(name || '').toLowerCase());
+}
+
+function visiblePlayerCount(data) {
+    const hidden = Array.isArray(data.players_list)
+        ? data.players_list.filter(p => p && isHiddenPlayer(p.name)).length
+        : 0;
+    return Math.max(0, (data.players_online || 0) - hidden);
 }
 
 async function updateServerStatus() {
@@ -151,8 +263,10 @@ async function updateServerStatus() {
             setStatusDot('online');
 
             if (playerCountEl) {
-                playerCountEl.textContent = `${data.players_online} / ${data.players_max}`;
+                playerCountEl.textContent = `${visiblePlayerCount(data)} / ${data.players_max}`;
             }
+
+            recordSample(visiblePlayerCount(data));
 
             if (tpsEl) {
                 const tps = data.tps.toFixed(1);
@@ -196,6 +310,7 @@ async function updateServerStatus() {
             setStatusDot('offline');
             if (playerCountEl) playerCountEl.textContent = '0 / 0';
             if (tpsEl) tpsEl.textContent = '-';
+            recordSample(0);
         }
 
         await updatePlayerList(API);
@@ -211,6 +326,319 @@ async function updateServerStatus() {
     }
 }
 
+// ---------- Player graph ----------
+// History comes from the API's /api/history when it is available. If it is
+// not (older API, or a failed request), history is built up in the visitor's
+// browser from the regular status polls instead. Either way it covers 24 hours
+// and new samples from the status poll are added live.
+// A sample is { t, n }: time and visible player count.
+
+const GRAPH_API = 'https://api.10b10t.com';
+const GRAPH_KEY = '10b10t-player-history';
+const GRAPH_WINDOW = 24 * 60 * 60 * 1000;
+const GRAPH_GAP = 5 * 60 * 1000;      // longer than this between samples = no data in between
+const GRAPH_MIN_SPAN = 10 * 60 * 1000;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+const GRAPHS = [
+    {
+        plotId: 'player-graph',
+        prefix: 'graph',
+        name: 'Online players',
+        value: s => s.n,
+        format: v => String(Math.round(v)),
+        tip: v => `${v} ${v === 1 ? 'player' : 'players'}`
+    }
+];
+
+function validSample(s) {
+    return s && Number.isFinite(s.t) && Number.isFinite(s.n);
+}
+
+function loadLocalHistory() {
+    try {
+        const raw = JSON.parse(localStorage.getItem(GRAPH_KEY) || '[]');
+        const cutoff = Date.now() - GRAPH_WINDOW;
+        return Array.isArray(raw) ? raw.filter(s => validSample(s) && s.t >= cutoff) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+// Set once /api/history answers; null means the browser-recorded fallback is in use
+let serverHistory = null;
+
+function currentHistory() {
+    return serverHistory || loadLocalHistory();
+}
+
+async function loadServerHistory() {
+    try {
+        const response = await fetch(`${GRAPH_API}/api/history?range=24h`);
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!data || !Array.isArray(data.points)) return;
+
+        const cutoff = Date.now() - GRAPH_WINDOW;
+        const points = data.points
+            .filter(p => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]) && p[0] >= cutoff)
+            .map(p => ({ t: p[0], n: p[1] }))
+            .sort((a, b) => a.t - b.t);
+
+        // Keep any live samples that arrived while the request was in flight
+        const newest = points.length ? points[points.length - 1].t : 0;
+        const pending = serverHistory ? serverHistory.filter(s => s.t > newest) : [];
+        serverHistory = points.concat(pending);
+
+        GRAPHS.forEach(cfg => {
+            const plot = document.getElementById(cfg.plotId);
+            const note = plot && plot.parentElement.querySelector('.graph-note');
+            if (note && points.some(s => Number.isFinite(cfg.value(s)))) {
+                note.textContent = 'Last 24 hours, updated every minute.';
+            }
+        });
+        renderGraphs();
+    } catch (e) {
+        /* API without history support: stay on the browser-recorded graph */
+    }
+}
+
+function recordSample(count) {
+    if (!Number.isFinite(count)) return;
+    const now = Date.now();
+    const sample = { t: now, n: count };
+
+    if (serverHistory) {
+        const last = serverHistory[serverHistory.length - 1];
+        if (last && now - last.t < 30000) {
+            serverHistory[serverHistory.length - 1] = { ...sample, t: last.t };
+        } else {
+            serverHistory.push(sample);
+        }
+        const cutoff = now - GRAPH_WINDOW;
+        while (serverHistory.length && serverHistory[0].t < cutoff) serverHistory.shift();
+        renderGraphs();
+        return;
+    }
+
+    const history = loadLocalHistory();
+    const last = history[history.length - 1];
+
+    // Several open tabs poll independently; fold near-duplicate samples together
+    if (last && now - last.t < 20000) {
+        history[history.length - 1] = sample;
+    } else {
+        history.push(sample);
+    }
+
+    try {
+        localStorage.setItem(GRAPH_KEY, JSON.stringify(history));
+    } catch (e) { /* storage full or disabled: graph still works for this visit */ }
+
+    renderGraphs();
+}
+
+function formatClock(t) {
+    return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function svgEl(tag, attrs) {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+}
+
+function graphStep(peak) {
+    const steps = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500];
+    return steps.find(s => peak / s <= 3) || 1000;
+}
+
+function setGraphText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
+
+function renderGraphs() {
+    const history = currentHistory();
+    GRAPHS.forEach(cfg => renderGraph(cfg, history));
+}
+
+function renderGraph(cfg, history) {
+    const plot = document.getElementById(cfg.plotId);
+    if (!plot) return;
+
+    const series = history
+        .filter(s => Number.isFinite(cfg.value(s)))
+        .map(s => ({ t: s.t, v: cfg.value(s) }));
+    const id = name => `${cfg.prefix}-${name}`;
+
+    // Stats
+    if (series.length) {
+        let peak = series[0], low = series[0], sum = 0;
+        series.forEach(s => {
+            sum += s.v;
+            if (s.v >= peak.v) peak = s;
+            if (s.v <= low.v) low = s;
+        });
+        const avg = sum / series.length;
+        const latestV = series[series.length - 1].v;
+        setGraphText(id('now'), cfg.format(latestV));
+        setGraphText(id('avg'), cfg.format(avg));
+        setGraphText(id('peak'), cfg.format(peak.v));
+        setGraphText(id('peak-when'), `at ${formatClock(peak.t)}`);
+        setGraphText(id('low'), cfg.format(low.v));
+        setGraphText(id('low-when'), `at ${formatClock(low.t)}`);
+
+        const span = Date.now() - series[0].t;
+        const mins = Math.max(1, Math.round(span / 60000));
+        setGraphText(id('range'), span >= GRAPH_WINDOW - 60000 ? 'last 24h'
+            : mins < 60 ? `last ${mins}m` : `last ${Math.floor(mins / 60)}h ${mins % 60}m`);
+
+        plot.setAttribute('aria-label',
+            `${cfg.name} over time. Now ${cfg.format(latestV)}, average ${cfg.format(avg)}, peak ${cfg.format(peak.v)}, low ${cfg.format(low.v)}.`);
+    }
+
+    const w = plot.clientWidth;
+    const h = plot.clientHeight;
+    plot.innerHTML = '';
+    if (!w || !h) return;   // hidden view; ResizeObserver redraws when it is shown
+
+    if (series.length < 2) {
+        const msg = document.createElement('div');
+        msg.className = 'graph-empty';
+        msg.textContent = 'Collecting data, check back in a few minutes';
+        plot.appendChild(msg);
+        if (!series.length) return;
+    }
+
+    const m = { top: 10, right: 44, bottom: 20, left: 30 };
+    const iw = w - m.left - m.right;
+    const ih = h - m.top - m.bottom;
+
+    const t1 = Date.now();
+    let t0 = Math.max(series[0].t, t1 - GRAPH_WINDOW);
+    if (t1 - t0 < GRAPH_MIN_SPAN) t0 = t1 - GRAPH_MIN_SPAN;
+
+    const peakV = Math.max(...series.map(s => s.v));
+    const step = graphStep(Math.max(peakV, 3));
+    const yMax = step * (Math.floor(peakV / step) + 1);
+
+    const x = t => m.left + ((t - t0) / (t1 - t0)) * iw;
+    const y = v => m.top + ih - (Math.min(v, yMax) / yMax) * ih;
+
+    const svg = svgEl('svg', { class: 'graph-svg', width: w, height: h, viewBox: `0 0 ${w} ${h}` });
+
+    // Grid and y labels
+    for (let v = 0; v <= yMax; v += step) {
+        svg.appendChild(svgEl('line', { class: 'graph-grid', x1: m.left, x2: m.left + iw, y1: y(v), y2: y(v) }));
+        const label = svgEl('text', { x: m.left - 6, y: y(v) + 3, 'text-anchor': 'end' });
+        label.textContent = v;
+        svg.appendChild(label);
+    }
+
+    // X labels: start, middle, now
+    [[t0, 'start'], [(t0 + t1) / 2, 'middle']].forEach(([t, anchor]) => {
+        const label = svgEl('text', { x: x(t), y: h - 4, 'text-anchor': anchor });
+        label.textContent = formatClock(t);
+        svg.appendChild(label);
+    });
+    const nowLabel = svgEl('text', { x: m.left + iw, y: h - 4, 'text-anchor': 'end' });
+    nowLabel.textContent = 'now';
+    svg.appendChild(nowLabel);
+
+    // Split into segments wherever there is no data, so gaps are not drawn as data
+    const segments = [];
+    series.forEach((s, i) => {
+        if (i === 0 || s.t - series[i - 1].t > GRAPH_GAP) segments.push([]);
+        segments[segments.length - 1].push(s);
+    });
+
+    segments.forEach(seg => {
+        if (seg.length === 1) {
+            svg.appendChild(svgEl('circle', { class: 'graph-dot', cx: x(seg[0].t), cy: y(seg[0].v), r: 3 }));
+            return;
+        }
+        const line = seg.map((s, i) => `${i ? 'L' : 'M'}${x(s.t).toFixed(1)},${y(s.v).toFixed(1)}`).join('');
+        const area = `${line}L${x(seg[seg.length - 1].t).toFixed(1)},${y(0)}L${x(seg[0].t).toFixed(1)},${y(0)}Z`;
+        svg.appendChild(svgEl('path', { class: 'graph-area', d: area }));
+        svg.appendChild(svgEl('path', { class: 'graph-line', d: line }));
+    });
+
+    // Average line, labelled in the right gutter
+    const avg = series.reduce((a, s) => a + s.v, 0) / series.length;
+    svg.appendChild(svgEl('line', { class: 'graph-avg', x1: m.left, x2: m.left + iw, y1: y(avg), y2: y(avg) }));
+    const avgLabel = svgEl('text', { class: 'graph-avg-label', x: m.left + iw + 6, y: y(avg) + 3 });
+    avgLabel.textContent = 'avg';
+    svg.appendChild(avgLabel);
+
+    // Latest point
+    const latest = series[series.length - 1];
+    svg.appendChild(svgEl('circle', { class: 'graph-latest', cx: x(latest.t), cy: y(latest.v), r: 4 }));
+
+    // Hover crosshair
+    const cross = svgEl('line', { class: 'graph-cross', y1: m.top, y2: m.top + ih, visibility: 'hidden' });
+    const crossDot = svgEl('circle', { class: 'graph-latest', r: 4, visibility: 'hidden' });
+    svg.appendChild(cross);
+    svg.appendChild(crossDot);
+
+    const tip = document.createElement('div');
+    tip.className = 'graph-tip';
+    const tipVal = document.createElement('strong');
+    const tipTime = document.createElement('span');
+    tip.append(tipVal, tipTime);
+
+    const showAt = e => {
+        const rect = svg.getBoundingClientRect();
+        const px = e.clientX - rect.left;
+        const t = t0 + ((px - m.left) / iw) * (t1 - t0);
+        let best = series[0];
+        for (const s of series) if (Math.abs(s.t - t) < Math.abs(best.t - t)) best = s;
+
+        const cx = x(best.t), cy = y(best.v);
+        cross.setAttribute('x1', cx);
+        cross.setAttribute('x2', cx);
+        crossDot.setAttribute('cx', cx);
+        crossDot.setAttribute('cy', cy);
+        cross.setAttribute('visibility', 'visible');
+        crossDot.setAttribute('visibility', 'visible');
+
+        tipVal.textContent = cfg.tip(best.v);
+        tipTime.textContent = formatClock(best.t);
+        tip.style.display = 'block';
+        const left = Math.min(Math.max(cx - tip.offsetWidth / 2, 0), w - tip.offsetWidth);
+        tip.style.left = `${left}px`;
+        tip.style.top = `${Math.max(cy - tip.offsetHeight - 10, 0)}px`;
+    };
+    // pointerdown so a tap on a phone shows the value too
+    svg.addEventListener('pointermove', showAt);
+    svg.addEventListener('pointerdown', showAt);
+    svg.addEventListener('pointerleave', () => {
+        cross.setAttribute('visibility', 'hidden');
+        crossDot.setAttribute('visibility', 'hidden');
+        tip.style.display = 'none';
+    });
+
+    plot.appendChild(svg);
+    plot.appendChild(tip);
+}
+
+function initGraphs() {
+    const plots = GRAPHS.map(cfg => document.getElementById(cfg.plotId)).filter(Boolean);
+    if (!plots.length) return;
+    renderGraphs();
+    loadServerHistory();
+    if ('ResizeObserver' in window) {
+        let lastW = 0;
+        new ResizeObserver(entries => {
+            const cw = Math.round(entries[0].contentRect.width);
+            if (cw !== lastW) {
+                lastW = cw;
+                renderGraphs();
+            }
+        }).observe(plots[0]);
+    }
+}
+
 async function updatePlayerList(api) {
     try {
         const response = await fetch(`${api}/api/players`);
@@ -219,9 +647,13 @@ async function updatePlayerList(api) {
         const playerListEl = document.getElementById('player-list');
         if (!playerListEl) return;
         
-        if (data.online && data.players && data.players.length > 0) {
+        const players = Array.isArray(data.players)
+            ? data.players.filter(p => p && !isHiddenPlayer(p.name))
+            : [];
+
+        if (data.online && players.length > 0) {
             playerListEl.innerHTML = '';
-            data.players.forEach(player => {
+            players.forEach(player => {
                 const playerItem = document.createElement('div');
                 playerItem.className = 'player-item';
                 
@@ -385,6 +817,7 @@ function initHotbarKeys() {
 
         const tag = document.activeElement && document.activeElement.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        if (document.body.classList.contains('viewer-open')) return;
 
         const n = parseInt(e.key, 10);
         if (!n || n < 1 || n > slots.length) return;
@@ -447,6 +880,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initDupePicker();
     initHotbarKeys();
     initRouter();
+    initGraphs();
     updateServerStatus();
     updateDonationMonth();
     updateLiveChat();

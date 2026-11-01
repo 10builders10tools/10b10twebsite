@@ -1245,3 +1245,408 @@ body {
 	overflow-y: auto;
 	align-content: start;
 }
+
+/* ---------- Player graph ---------- */
+
+.graph-panel {
+	margin-bottom: 1.5rem;
+	padding-bottom: 1rem;
+}
+
+.graph-range {
+	float: right;
+	color: var(--text-muted);
+	font-size: 0.75rem;
+	letter-spacing: 0.04em;
+	text-transform: none;
+}
+
+.graph-stats {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 0.75rem;
+	margin-bottom: 1rem;
+}
+
+.graph-stat {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	column-gap: 0.5rem;
+	row-gap: 0.2rem;
+	background: var(--dark);
+	border: 3px solid;
+	border-color: var(--bevel-lo) var(--bevel-hi) var(--bevel-hi) var(--bevel-lo);
+	padding: 0.5rem 0.75rem;
+}
+
+.graph-stat-key {
+	flex-basis: 100%;
+	font-family: var(--display);
+	font-size: 0.7rem;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-muted);
+}
+
+.graph-stat-val {
+	font-family: var(--display);
+	font-size: 1.15rem;
+	color: var(--text);
+}
+
+.graph-stat-when {
+	font-size: 0.7rem;
+	color: var(--text-muted);
+}
+
+.graph-plot {
+	position: relative;
+	height: 130px;
+}
+
+.graph-svg {
+	display: block;
+	touch-action: pan-y;   /* vertical swipes still scroll the page on phones */
+}
+
+.graph-svg text {
+	font-family: var(--display);
+	font-size: 10px;
+	fill: var(--text-muted);
+}
+
+.graph-grid {
+	stroke: var(--border);
+	stroke-width: 1;
+}
+
+.graph-area {
+	fill: rgba(59, 130, 246, 0.15);
+}
+
+.graph-line {
+	fill: none;
+	stroke: var(--primary);
+	stroke-width: 2;
+	stroke-linejoin: round;
+	stroke-linecap: round;
+}
+
+.graph-dot {
+	fill: var(--primary);
+}
+
+.graph-avg {
+	stroke: var(--secondary);
+	stroke-width: 1;
+	stroke-dasharray: 4 4;
+}
+
+.graph-svg .graph-avg-label {
+	fill: var(--secondary);
+}
+
+.graph-latest {
+	fill: var(--primary);
+	stroke: var(--dark-light);
+	stroke-width: 2;
+}
+
+.graph-cross {
+	stroke: var(--text-muted);
+	stroke-width: 1;
+	pointer-events: none;
+}
+
+.graph-tip {
+	display: none;
+	position: absolute;
+	pointer-events: none;
+	white-space: nowrap;
+	background: var(--dark);
+	border: 3px solid;
+	border-color: var(--bevel-hi) var(--bevel-lo) var(--bevel-lo) var(--bevel-hi);
+	padding: 0.3rem 0.55rem;
+	font-size: 0.75rem;
+	color: var(--text-muted);
+}
+
+.graph-tip strong {
+	font-family: var(--display);
+	color: var(--text);
+	margin-right: 0.5rem;
+}
+
+.graph-empty {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-muted);
+	font-size: 0.8rem;
+	pointer-events: none;
+}
+
+.graph-note {
+	margin-top: 0.5rem;
+	font-size: 0.7rem;
+	color: var(--text-muted);
+}
+
+@media (max-width: 600px) {
+	.graph-stats {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+/* ---------- Image viewer ---------- */
+
+.viewer {
+	position: fixed;
+	inset: 0;
+	z-index: 300;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	background: rgba(5, 10, 22, 0.92);
+}
+
+.viewer[hidden] {
+	display: none;
+}
+
+.viewer-frame {
+	display: flex;
+	flex-direction: column;
+	max-width: 100%;
+	max-height: 100%;
+	background: var(--dark-light);
+	border: 3px solid;
+	border-color: var(--bevel-hi) var(--bevel-lo) var(--bevel-lo) var(--bevel-hi);
+	padding: 6px;
+}
+
+.viewer-img {
+	display: block;
+	min-height: 0;
+	max-width: 100%;
+	max-height: calc(100vh - 2rem - 70px);
+	max-height: calc(100dvh - 2rem - 70px);
+	object-fit: contain;
+	image-rendering: auto;
+}
+
+.viewer-bar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding-top: 6px;
+}
+
+.viewer-count {
+	flex: 1;
+	text-align: center;
+	font-family: var(--display);
+	font-size: 0.8rem;
+	color: var(--text-muted);
+}
+
+.viewer-btn {
+	min-width: 44px;
+	min-height: 44px;
+	font-family: var(--display);
+	font-size: 1rem;
+	color: var(--text);
+	background: var(--dark-lighter);
+	border: 3px solid;
+	border-color: var(--bevel-hi) var(--bevel-lo) var(--bevel-lo) var(--bevel-hi);
+	cursor: pointer;
+}
+
+.viewer-btn:hover,
+.viewer-btn:focus-visible {
+	color: var(--secondary);
+	border-color: var(--secondary);
+	outline: none;
+}
+
+.viewer-btn:active {
+	border-color: var(--bevel-lo) var(--bevel-hi) var(--bevel-hi) var(--bevel-lo);
+}
+
+.viewer-close {
+	margin-left: 6px;
+}
+
+/* ---------- Phones ---------- */
+
+/* Shown only on phones, where Terms and Privacy leave the hotbar */
+.legal-links {
+	display: none;
+}
+
+/* Use the visible screen height so mobile browser bars never cover the hotbar */
+@supports (height: 100dvh) {
+	html,
+	body {
+		height: 100dvh;
+	}
+}
+
+@media (max-width: 600px) {
+	.screens {
+		padding: 0.9rem 0.6rem 0.5rem;
+	}
+
+	.view.active {
+		padding-right: 0.25rem;
+	}
+
+	.view.active::-webkit-scrollbar,
+	.screens-scroll::-webkit-scrollbar {
+		width: 4px;
+	}
+
+	.view.active::-webkit-scrollbar-thumb,
+	.screens-scroll::-webkit-scrollbar-thumb {
+		border: 0;
+		background: var(--border-bright);
+	}
+
+	.mc-panel {
+		padding: 1rem;
+	}
+
+	.panel-title {
+		margin: -1rem -1rem 1rem;
+		padding: 0.6rem 1rem;
+	}
+
+	/* Hotbar: seven slots that fit the width, no sideways scrolling */
+	.hotbar {
+		display: grid;
+		grid-template-columns: repeat(7, 1fr);
+		gap: 3px;
+		padding: 5px;
+		overflow: visible;
+	}
+
+	.hotbar .nav-link {
+		width: auto;
+		min-width: 0;
+		padding: 0.4rem 0.1rem;
+		min-height: 48px;
+	}
+
+	.hotbar .hb-legal,
+	.hb-key {
+		display: none;
+	}
+
+	.hb-icon {
+		font-size: 1rem;
+	}
+
+	.hb-label {
+		font-size: 0.55rem;
+		letter-spacing: 0.02em;
+		white-space: nowrap;
+	}
+
+	.legal-links {
+		display: block;
+		margin-top: 1rem;
+		font-size: 0.8rem;
+		color: var(--text-muted);
+	}
+
+	.legal-links a {
+		display: inline-block;
+		padding: 0.5rem 0.75rem;
+		color: var(--text-muted);
+	}
+
+	/* Server entry: name and signal on one row, readout in a row below */
+	.server-entry {
+		grid-template-columns: 44px 1fr auto;
+		gap: 0.75rem;
+		padding: 0.75rem;
+	}
+
+	.server-icon {
+		width: 44px;
+		height: 44px;
+	}
+
+	.ping-bars {
+		grid-column: auto;
+		grid-row: 1;
+		grid-column-start: 3;
+	}
+
+	.server-readout {
+		grid-column: 1 / -1;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.25rem 1rem;
+	}
+
+	/* Readable text and thumb-sized buttons */
+	.ip-label,
+	.slot-name,
+	.dupe-req,
+	.toast-date {
+		font-size: 0.7rem;
+	}
+
+	.copy-btn {
+		min-height: 40px;
+		padding: 0.5rem 1rem;
+	}
+
+	.graph-stat {
+		padding: 0.4rem 0.6rem;
+	}
+
+	/* Chat lines flow like console text: the message wraps under the name
+	   instead of forcing the panel wider than the screen */
+	.chat-container {
+		padding: 0.6rem;
+		font-size: 0.78rem;
+	}
+
+	.chat-message {
+		display: block;
+		white-space: normal;
+	}
+
+	.chat-message::before {
+		content: '';
+	}
+
+	.chat-head {
+		vertical-align: -3px;
+		margin: 0 0.3rem;
+	}
+
+	.chat-text {
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+
+	.legal-links a {
+		padding: 0.7rem 0.9rem;
+	}
+}
+
+/* A grid track sized 1fr cannot shrink below its widest content; minmax(0, 1fr)
+   keeps the one-column server layout inside the screen on tablets and phones */
+@media (max-width: 900px) {
+	.server-split {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}

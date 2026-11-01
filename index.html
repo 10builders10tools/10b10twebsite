@@ -8,7 +8,7 @@
     <meta name="keywords" content="minecraft, anarchy, 2b2t, 10b10t, server, 6b6t">
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
     <link href="https://fonts.cdnfonts.com/css/minecraft-4" rel="stylesheet">
-    <link href="style.css?v=10" rel="stylesheet">
+    <link href="style.css?v=22" rel="stylesheet">
 </head>
 <body>
 <div class="game">
@@ -34,6 +34,7 @@
                     <span class="ip-address"><span style="color: #5555FF;">10b</span><span style="color: #fbbf24;">10t</span>.com</span>
                     <button class="copy-btn">Copy</button>
                 </div>
+                <p class="legal-links"><a href="terms.html">Terms</a> &middot; <a href="privacy.html">Privacy</a></p>
             </div>
         </section>
 
@@ -54,6 +55,18 @@
                 </div>
                 <div class="ping-bars" id="ping-bars"><i></i><i></i><i></i><i></i><i></i></div>
             </div>
+
+            <section class="mc-panel graph-panel">
+                <h3 class="panel-title">Player Graph <span class="graph-range" id="graph-range">last 24h</span></h3>
+                <div class="graph-stats">
+                    <div class="graph-stat"><span class="graph-stat-key">Now</span><span class="graph-stat-val" id="graph-now">-</span></div>
+                    <div class="graph-stat"><span class="graph-stat-key">Average</span><span class="graph-stat-val" id="graph-avg">-</span></div>
+                    <div class="graph-stat"><span class="graph-stat-key">Peak</span><span class="graph-stat-val" id="graph-peak">-</span><span class="graph-stat-when" id="graph-peak-when"></span></div>
+                    <div class="graph-stat"><span class="graph-stat-key">Low</span><span class="graph-stat-val" id="graph-low">-</span><span class="graph-stat-when" id="graph-low-when"></span></div>
+                </div>
+                <div class="graph-plot" id="player-graph" role="img" aria-label="Online players over time"></div>
+                <p class="graph-note">Recorded while this page is open. Keeps the last 24 hours.</p>
+            </section>
 
             <div class="server-split">
                 <section class="mc-panel">
@@ -389,11 +402,11 @@
         <a href="#gallery" class="nav-link"><span class="hb-icon">▣</span><span class="hb-label">Gallery</span><span class="hb-key">5</span></a>
         <a href="#about" class="nav-link"><span class="hb-icon">▤</span><span class="hb-label">Stats</span><span class="hb-key">6</span></a>
         <a href="#donate" class="nav-link"><span class="hb-icon">◈</span><span class="hb-label">Donate</span><span class="hb-key">7</span></a>
-        <a href="terms.html" class="nav-link"><span class="hb-icon">§</span><span class="hb-label">Terms</span><span class="hb-key">8</span></a>
-        <a href="privacy.html" class="nav-link"><span class="hb-icon">⚿</span><span class="hb-label">Privacy</span><span class="hb-key">9</span></a>
+        <a href="terms.html" class="hb-legal nav-link"><span class="hb-icon">§</span><span class="hb-label">Terms</span><span class="hb-key">8</span></a>
+        <a href="privacy.html" class="hb-legal nav-link"><span class="hb-icon">⚿</span><span class="hb-label">Privacy</span><span class="hb-key">9</span></a>
     </nav>
 </div>
 
-<script src="Script.js?v=10"></script>
+<script src="Script.js?v=22"></script>
 </body>
 </html>
