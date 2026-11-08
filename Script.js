@@ -807,6 +807,40 @@ function initRouter() {
     routeFromHash();
 }
 
+/* Phones: keep the pinned hotbar above the browser's toolbar.
+   A fixed bottom bar is placed against the page's layout height, but mobile
+   Safari's toolbar can grow taller than that and cover the bar's lower part.
+   visualViewport reports what is actually visible, so lift the bar by the
+   difference. Does nothing on desktop, where the hotbar is not fixed. */
+function initHotbarLift() {
+    const hotbar = document.querySelector('.hotbar');
+    const vv = window.visualViewport;
+    if (!hotbar || !vv) return;
+
+    let queued = false;
+    const update = () => {
+        queued = false;
+        let lift = 0;
+        if (getComputedStyle(hotbar).position === 'fixed' && vv.scale < 1.01) {
+            const visibleBottom = vv.offsetTop + vv.height;
+            lift = Math.max(0, Math.round(document.documentElement.clientHeight - visibleBottom));
+        }
+        hotbar.style.transform = lift ? `translateY(-${lift}px)` : '';
+        document.documentElement.style.setProperty('--hotbar-lift', `${lift}px`);
+    };
+    const queue = () => {
+        if (!queued) {
+            queued = true;
+            requestAnimationFrame(update);
+        }
+    };
+
+    vv.addEventListener('resize', queue);
+    vv.addEventListener('scroll', queue);
+    window.addEventListener('resize', queue);
+    update();
+}
+
 /* Hotbar: number keys 1-7 select a slot, the way they would in game */
 function initHotbarKeys() {
     const slots = [...document.querySelectorAll('.hotbar .nav-link')];
@@ -880,6 +914,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initDupePicker();
     initHotbarKeys();
     initRouter();
+    initHotbarLift();
     initGraphs();
     updateServerStatus();
     updateDonationMonth();
