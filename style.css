@@ -1491,8 +1491,24 @@ body {
 
 /* ---------- Phones ---------- */
 
-/* Shown only on phones, where Terms and Privacy leave the hotbar */
+/* Tickets everywhere; Terms and Privacy only on phones, where they leave the hotbar */
 .legal-links {
+	margin-top: 1rem;
+	font-size: 0.8rem;
+	color: var(--text-muted);
+}
+
+.legal-links a {
+	display: inline-block;
+	padding: 0.5rem 0.75rem;
+	color: var(--text-muted);
+}
+
+.legal-links a:hover {
+	color: var(--secondary);
+}
+
+.phone-only {
 	display: none;
 }
 
@@ -1564,11 +1580,8 @@ body {
 		white-space: nowrap;
 	}
 
-	.legal-links {
-		display: block;
-		margin-top: 1rem;
-		font-size: 0.8rem;
-		color: var(--text-muted);
+	.phone-only {
+		display: inline;
 	}
 
 	.legal-links a {
