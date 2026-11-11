@@ -1433,10 +1433,18 @@ body {
 	display: block;
 	min-height: 0;
 	max-width: 100%;
-	max-height: calc(100vh - 2rem - 70px);
-	max-height: calc(100dvh - 2rem - 70px);
+	max-height: calc(100vh - 2rem - 100px);
+	max-height: calc(100dvh - 2rem - 100px);
 	object-fit: contain;
 	image-rendering: auto;
+}
+
+.viewer-caption {
+	margin: 6px 2px 0;
+	font-size: 0.85rem;
+	color: var(--text);
+	text-align: center;
+	overflow-wrap: anywhere;
 }
 
 .viewer-bar {

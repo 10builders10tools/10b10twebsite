@@ -93,7 +93,9 @@ function updateHeroMOTD() {
     }
 }
 
-const galleryImages = [
+// Built-in images, then any uploaded from the admin page (listed in
+// /uploads/gallery.json, which the admin service maintains on the VPS)
+const builtInGallery = [
     'spawn_render.png',
     'portal.png',
     'spawn.png',
@@ -102,14 +104,24 @@ const galleryImages = [
     'theend.png'
 ];
 
-function initGallery() {
+let galleryImages = builtInGallery.map(name => ({
+    src: `images/${name}`,
+    thumb: `images/${name}`,
+    alt: name.replace('.png', '').replace('_', ' '),
+    caption: ''
+}));
+
+const UPLOAD_PATH = /^\/uploads\/gallery\/[0-9a-f]{24}(-t)?\.webp$/;
+
+function renderGallery() {
     const container = document.getElementById('gallery-container');
     if (!container) return;
+    container.textContent = '';
 
     galleryImages.forEach((img, index) => {
         // Still a real link, so ctrl/middle-click can open the file in a tab on purpose
         const item = document.createElement('a');
-        item.href = `images/${img}`;
+        item.href = img.src;
         item.className = 'gallery-item';
         item.addEventListener('click', e => {
             if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
@@ -118,13 +130,38 @@ function initGallery() {
         });
 
         const image = document.createElement('img');
-        image.src = `images/${img}`;
-        image.alt = img.replace('.png', '').replace('_', ' ');
+        image.src = img.thumb;
+        image.alt = img.alt;
         image.loading = 'lazy';
 
         item.appendChild(image);
         container.appendChild(item);
     });
+}
+
+async function loadUploadedImages() {
+    try {
+        const response = await fetch('/uploads/gallery.json', { cache: 'no-cache' });
+        if (!response.ok) return;
+        const data = await response.json();
+        const uploaded = (Array.isArray(data.images) ? data.images : [])
+            .filter(img => img && UPLOAD_PATH.test(img.url) && UPLOAD_PATH.test(img.thumb))
+            .map(img => {
+                const caption = typeof img.caption === 'string' ? img.caption.slice(0, 140) : '';
+                return { src: img.url, thumb: img.thumb, alt: caption || 'Gallery image', caption };
+            });
+        if (!uploaded.length) return;
+        galleryImages = galleryImages.concat(uploaded);
+        renderGallery();
+    } catch (e) {
+        /* no uploads list (e.g. local preview): the built-in images are enough */
+    }
+}
+
+function initGallery() {
+    if (!document.getElementById('gallery-container')) return;
+    renderGallery();
+    loadUploadedImages();
 }
 
 // ---------- Image viewer ----------
@@ -143,6 +180,7 @@ function buildViewer() {
     el.innerHTML = `
         <div class="viewer-frame">
             <img class="viewer-img" alt="">
+            <p class="viewer-caption" hidden></p>
             <div class="viewer-bar">
                 <button type="button" class="viewer-btn viewer-prev" aria-label="Previous image">&#9664;</button>
                 <span class="viewer-count"></span>
@@ -192,10 +230,13 @@ function buildViewer() {
 }
 
 function showViewerImage() {
-    const name = galleryImages[viewerIndex];
+    const entry = galleryImages[viewerIndex];
     const img = viewer.querySelector('.viewer-img');
-    img.src = `images/${name}`;
-    img.alt = name.replace('.png', '').replace('_', ' ');
+    img.src = entry.src;
+    img.alt = entry.alt;
+    const caption = viewer.querySelector('.viewer-caption');
+    caption.textContent = entry.caption;
+    caption.hidden = !entry.caption;
     viewer.querySelector('.viewer-count').textContent = `${viewerIndex + 1} / ${galleryImages.length}`;
 }
 
