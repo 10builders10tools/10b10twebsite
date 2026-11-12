@@ -661,6 +661,12 @@ body {
 	line-height: 1.5;
 }
 
+/* Posts from the admin page keep their line breaks */
+.toast-text {
+	white-space: pre-line;
+	overflow-wrap: anywhere;
+}
+
 .toast-date {
 	font-family: var(--display);
 	font-size: 0.68rem;

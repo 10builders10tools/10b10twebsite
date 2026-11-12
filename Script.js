@@ -158,6 +158,61 @@ async function loadUploadedImages() {
     }
 }
 
+// ---------- News posted from the admin page ----------
+// /uploads/news.json is written by the admin service on the VPS. Its posts go
+// above the ones built into the page. Plain text only.
+
+const NEWS_ICONS = {
+    server: '⚙', protection: '⛨', website: '▦', dupe: '⧉', change: '⧨', rules: '§', general: '✎'
+};
+const NEWS_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+function newsDate(ymd) {
+    // Built from the parts, so a visitor's time zone cannot move the day
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || '');
+    if (!m || Number(m[2]) < 1 || Number(m[2]) > 12) return null;
+    return `${NEWS_MONTHS[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}`;
+}
+
+async function loadNews() {
+    const list = document.querySelector('#news .toast-list');
+    if (!list) return;
+    try {
+        const response = await fetch('/uploads/news.json', { cache: 'no-cache' });
+        if (!response.ok) return;
+        const data = await response.json();
+        const posts = (Array.isArray(data.posts) ? data.posts : []).slice(0, 200);
+        const fragment = document.createDocumentFragment();
+        for (const post of posts) {
+            const date = newsDate(post && post.date);
+            const glyph = post && NEWS_ICONS[post.icon];
+            if (!date || !glyph || typeof post.title !== 'string' || typeof post.body !== 'string') continue;
+
+            const article = document.createElement('article');
+            article.className = 'toast';
+            const icon = document.createElement('span');
+            icon.className = 'toast-icon';
+            icon.textContent = glyph;
+            const body = document.createElement('div');
+            body.className = 'toast-body';
+            const title = document.createElement('h3');
+            title.textContent = post.title.slice(0, 100);
+            const text = document.createElement('p');
+            text.className = 'toast-text';
+            text.textContent = post.body.slice(0, 2000);
+            body.append(title, text);
+            const when = document.createElement('span');
+            when.className = 'toast-date';
+            when.textContent = date;
+            article.append(icon, body, when);
+            fragment.appendChild(article);
+        }
+        list.prepend(fragment);
+    } catch (e) {
+        /* no news file (e.g. local preview): the built-in posts are enough */
+    }
+}
+
 function initGallery() {
     if (!document.getElementById('gallery-container')) return;
     renderGallery();
@@ -951,6 +1006,7 @@ function updateDonationMonth() {
 document.addEventListener('DOMContentLoaded', () => {
     updateHeroMOTD();
     initGallery();
+    loadNews();
     initCopyButton();
     initDupePicker();
     initHotbarKeys();
