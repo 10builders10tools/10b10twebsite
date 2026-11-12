@@ -80,7 +80,7 @@
             <section class="mc-panel terms-card">
                 <h3 class="panel-title">Password Reset</h3>
                 <p>If you set up password reset in the account menu and confirm it in game, the login server stores an authenticator secret for your account. It is used only to check the codes from your app when you reset your password on the website. Turning reset off with <code>/webreset off</code> deletes it.</p>
-                <p>When you reset your password, the website passes your username, the code and your new password to the login server. The website keeps none of them: they are held in memory for a few seconds until the login server collects them, and are never saved or logged. The login server stores your new password hashed, the same as a password set in game.</p>
+                <p>When you reset your password, the website passes your username, the code and your new password to the login server. The website keeps none of them: they are held in memory until the login server collects them, at most 2 minutes, and are never saved or logged. The login server stores your new password hashed, the same as a password set in game.</p>
             </section>
 
             <section class="mc-panel terms-card">
