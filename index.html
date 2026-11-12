@@ -22,7 +22,7 @@
     <meta name="twitter:image" content="https://www.10b10t.com/images/og-card-2.jpg">
     <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
     <link href="https://fonts.cdnfonts.com/css/minecraft-4" rel="stylesheet">
-    <link href="/style.css?v=36" rel="stylesheet">
+    <link href="/style.css?v=37" rel="stylesheet">
 </head>
 <body>
 <div class="game">
@@ -30,6 +30,12 @@
 
         <!-- Title screen -->
         <section id="home" class="view active">
+            <button type="button" class="account-btn" id="account-btn" aria-haspopup="dialog" hidden>
+                <span class="mc-head" aria-hidden="true"></span>
+                <span class="account-btn-name">Log in</span>
+                <span class="account-badge" hidden></span>
+            </button>
+
             <div class="title-screen">
                 <h1 class="title-logo"><span style="color: #5555FF;">10BUILDERS</span><br><span style="color: #fbbf24;">10TOOLS</span></h1>
                 <p class="hero-subtitle">Minecraft Anarchy Server</p>
@@ -422,6 +428,52 @@
     </nav>
 </div>
 
-<script src="/Script.js?v=36"></script>
+<!-- Account: log in with a code from /support, then see your tickets and stats -->
+<div class="account" id="account" role="dialog" aria-modal="true" aria-labelledby="account-title" hidden>
+    <div class="account-box mc-panel">
+        <div class="account-head-row">
+            <h2 class="panel-title" id="account-title">Account</h2>
+            <button type="button" class="viewer-btn account-close" aria-label="Close">&#10005;</button>
+        </div>
+
+        <form class="account-login" id="account-login" novalidate>
+            <p>Log in with your Minecraft account. There is no password here.</p>
+            <ol class="account-steps">
+                <li>Join <strong>10b10t.com</strong> and type <code>/support</code> in chat.</li>
+                <li>Enter the code it shows you. It works once, for 5 minutes.</li>
+            </ol>
+            <label class="account-label" for="account-code">Login code</label>
+            <div class="account-code-row">
+                <input type="text" id="account-code" name="code" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="ABC-123" required>
+                <button type="submit" class="mc-btn">Log in</button>
+            </div>
+            <p class="account-msg" role="alert"></p>
+        </form>
+
+        <div class="account-me" id="account-me" hidden>
+            <div class="account-who">
+                <span class="mc-head mc-head-big" aria-hidden="true"></span>
+                <span class="account-who-name"></span>
+            </div>
+
+            <section class="account-section account-stats" hidden>
+                <h3 class="account-section-title">Stats</h3>
+                <dl class="account-stat-grid"></dl>
+                <p class="account-note account-stats-when"></p>
+            </section>
+
+            <section class="account-section">
+                <h3 class="account-section-title">Tickets</h3>
+                <ul class="account-tickets"></ul>
+                <a href="/support" class="mini-btn account-tickets-link">Open Tickets</a>
+            </section>
+
+            <button type="button" class="mc-btn account-logout">Log out</button>
+            <p class="account-msg account-me-msg" role="alert"></p>
+        </div>
+    </div>
+</div>
+
+<script src="/Script.js?v=37"></script>
 </body>
 </html>

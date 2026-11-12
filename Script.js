@@ -1047,6 +1047,7 @@ function initHotbarKeys() {
         const tag = document.activeElement && document.activeElement.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA') return;
         if (document.body.classList.contains('viewer-open')) return;
+        if (document.body.classList.contains('account-open')) return;
 
         const n = parseInt(e.key, 10);
         if (!n || n < 1 || n > slots.length) return;
@@ -1102,6 +1103,239 @@ function updateDonationMonth() {
     }
 }
 
+// ---------- Account menu ----------
+// Players log in with the same one-time code as the Tickets page (/support in
+// game), so one login covers both. The session lives in an HttpOnly cookie that
+// this script never sees; it only asks /support/api/me who is logged in.
+
+let account = { me: null, returnFocus: null };
+
+async function accountApi(url, body) {
+    const options = { credentials: 'same-origin', cache: 'no-store' };
+    if (body !== undefined) {
+        options.method = 'POST';
+        options.headers = { 'Content-Type': 'application/json' };
+        options.body = JSON.stringify(body);
+    }
+    const res = await fetch(url, options);
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* empty body */ }
+    return { ok: res.ok, status: res.status, data };
+}
+
+function formatDuration(seconds) {
+    const s = Math.max(0, Math.floor(Number(seconds) || 0));
+    const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+    if (d > 0) return `${d}d ${h}h`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+}
+
+function formatAgo(ms) {
+    const s = Math.max(0, (Date.now() - ms) / 1000);
+    if (s < 90) return 'just now';
+    return `${formatDuration(s)} ago`;
+}
+
+// A player's face, cut from their skin by the tickets service (8x8, hat layer
+// included). Without a skin it stays a plain block showing their first letter.
+function setHead(el, me) {
+    el.textContent = '';
+    el.classList.toggle('has-skin', Boolean(me && me.skin));
+    if (me && me.skin) {
+        el.style.backgroundImage = `url("/support/api/skin?h=${encodeURIComponent(me.skin)}")`;
+    } else {
+        el.style.backgroundImage = '';
+        if (me && me.name) el.textContent = me.name.replace(/^\./, '').charAt(0).toUpperCase();
+    }
+}
+
+function renderAccount() {
+    const me = account.me;
+    const btn = document.getElementById('account-btn');
+    if (!btn) return;
+    const unread = me ? (me.tickets || []).filter(t => t.unreadPlayer).length : 0;
+
+    setHead(btn.querySelector('.mc-head'), me);
+    btn.querySelector('.account-btn-name').textContent = me ? me.name : 'Log in';
+    btn.classList.toggle('logged-in', Boolean(me));
+    const badge = btn.querySelector('.account-badge');
+    badge.hidden = unread === 0;
+    badge.textContent = String(unread);
+    btn.setAttribute('aria-label', me
+        ? `Account: ${me.name}${unread ? `, ${unread} new ticket ${unread === 1 ? 'reply' : 'replies'}` : ''}`
+        : 'Log in');
+    btn.hidden = false;
+
+    document.getElementById('account-login').hidden = Boolean(me);
+    document.getElementById('account-me').hidden = !me;
+    document.getElementById('account-title').textContent = me ? 'Account' : 'Log in';
+    if (!me) return;
+
+    const box = document.getElementById('account-me');
+    setHead(box.querySelector('.mc-head'), me);
+    box.querySelector('.account-who-name').textContent = me.name;
+
+    // Stats, when the server sent them with the login
+    const statsSection = box.querySelector('.account-stats');
+    const st = me.stats;
+    statsSection.hidden = !st;
+    if (st) {
+        const rows = [
+            ['Playtime', formatDuration(st.playtime)],
+            ['First joined', st.firstJoined ? new Date(st.firstJoined).toLocaleDateString([], { dateStyle: 'medium' }) : '-'],
+            ['Deaths', Number(st.deaths).toLocaleString()],
+            ['Player kills', Number(st.playerKills).toLocaleString()],
+            ['Mob kills', Number(st.mobKills).toLocaleString()],
+            ['Alive for', st.deaths > 0 ? formatDuration(st.sinceDeath) : formatDuration(st.playtime)]
+        ];
+        const grid = statsSection.querySelector('.account-stat-grid');
+        grid.textContent = '';
+        for (const [label, value] of rows) {
+            const cell = document.createElement('div');
+            const dt = document.createElement('dt');
+            const dd = document.createElement('dd');
+            dt.textContent = label;
+            dd.textContent = value;
+            cell.append(dt, dd);
+            grid.appendChild(cell);
+        }
+        statsSection.querySelector('.account-stats-when').textContent =
+            me.statsAt ? `Updated ${formatAgo(me.statsAt)}. Type /support in game to refresh them.` : '';
+    }
+
+    // Tickets: the newest few, newest first
+    const list = box.querySelector('.account-tickets');
+    list.textContent = '';
+    const tickets = me.tickets || [];
+    if (tickets.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'account-empty';
+        li.textContent = 'No tickets yet.';
+        list.appendChild(li);
+    }
+    for (const t of tickets.slice(0, 4)) {
+        const li = document.createElement('li');
+        const subject = document.createElement('span');
+        subject.className = 'account-ticket-subject';
+        subject.textContent = `#${t.id} ${t.subject}`;
+        const status = document.createElement('span');
+        status.className = 'account-ticket-status';
+        if (t.unreadPlayer) {
+            status.textContent = 'New reply';
+            status.classList.add('is-new');
+        } else {
+            status.textContent = t.status === 'closed' ? 'Closed' : 'Open';
+        }
+        li.append(subject, status);
+        list.appendChild(li);
+    }
+    box.querySelector('.account-tickets-link').textContent = tickets.length ? 'Open Tickets' : 'New Ticket';
+}
+
+async function loadAccount() {
+    try {
+        const { ok, data } = await accountApi('/support/api/me');
+        account.me = ok && data.loggedIn ? data : null;
+    } catch (e) {
+        account.me = null; // offline or the service is down: offer the login, it will say what's wrong
+    }
+    renderAccount();
+}
+
+function openAccount() {
+    const dialog = document.getElementById('account');
+    // Safari doesn't focus a clicked button, so fall back to the account button
+    const active = document.activeElement;
+    account.returnFocus = active && active !== document.body ? active : document.getElementById('account-btn');
+    dialog.hidden = false;
+    document.body.classList.add('account-open');
+    const first = account.me ? dialog.querySelector('.account-close') : dialog.querySelector('#account-code');
+    first.focus();
+    if (account.me) loadAccount(); // refresh tickets and stats while it's open
+}
+
+function closeAccount() {
+    const dialog = document.getElementById('account');
+    if (dialog.hidden) return;
+    dialog.hidden = true;
+    document.body.classList.remove('account-open');
+    for (const msg of dialog.querySelectorAll('.account-msg')) msg.textContent = '';
+    if (account.returnFocus && account.returnFocus.focus) account.returnFocus.focus();
+}
+
+function initAccount() {
+    const btn = document.getElementById('account-btn');
+    const dialog = document.getElementById('account');
+    if (!btn || !dialog) return;
+
+    btn.addEventListener('click', openAccount);
+    dialog.querySelector('.account-close').addEventListener('click', closeAccount);
+    dialog.addEventListener('click', e => { if (e.target === dialog) closeAccount(); });
+    dialog.querySelector('.account-tickets-link').addEventListener('click', closeAccount);
+
+    document.addEventListener('keydown', e => {
+        if (dialog.hidden) return;
+        if (e.key === 'Escape') {
+            closeAccount();
+        } else if (e.key === 'Tab') {
+            // keep keyboard focus inside the dialog while it is open
+            const items = [...dialog.querySelectorAll('button, input, a[href]')].filter(el => el.offsetParent !== null);
+            const i = items.indexOf(document.activeElement);
+            const next = e.shiftKey ? (i <= 0 ? items.length - 1 : i - 1) : (i + 1) % items.length;
+            items[next].focus();
+            e.preventDefault();
+        }
+    });
+
+    const form = document.getElementById('account-login');
+    const loginMsg = form.querySelector('.account-msg');
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const input = form.querySelector('#account-code');
+        const submit = form.querySelector('button[type="submit"]');
+        if (!input.value.trim()) {
+            loginMsg.textContent = 'Type /support in game to get a code.';
+            input.focus();
+            return;
+        }
+        submit.disabled = true;
+        loginMsg.textContent = 'Checking...';
+        try {
+            const { ok, data } = await accountApi('/support/login', { code: input.value });
+            if (!ok) {
+                loginMsg.textContent = data.error || 'Login failed. Try again in a minute.';
+                input.select();
+                return;
+            }
+            input.value = '';
+            loginMsg.textContent = '';
+            await loadAccount();
+            if (account.me) dialog.querySelector('.account-close').focus();
+        } catch (err) {
+            loginMsg.textContent = 'The login service can\'t be reached right now. Try again in a minute.';
+        } finally {
+            submit.disabled = false;
+        }
+    });
+
+    const meMsg = dialog.querySelector('.account-me-msg');
+    dialog.querySelector('.account-logout').addEventListener('click', async () => {
+        meMsg.textContent = '';
+        try {
+            const { ok } = await accountApi('/support/logout', {});
+            if (!ok) throw new Error('logout failed');
+            account.me = null;
+            renderAccount();
+            dialog.querySelector('#account-code').focus();
+        } catch (err) {
+            meMsg.textContent = 'Couldn\'t log out right now. Try again in a minute.';
+        }
+    });
+
+    loadAccount();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     updateHeroMOTD();
     updateDeathMessage();
@@ -1111,6 +1345,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initDupePicker();
     initHotbarKeys();
     initRouter();
+    initAccount();
     initHotbarLift();
     initGraphs();
     updateServerStatus();
