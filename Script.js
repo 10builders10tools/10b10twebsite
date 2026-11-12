@@ -894,6 +894,16 @@ const ROUTES = {
     '/stats': 'about',
     '/donate': 'donate'
 };
+// What search engines show for each screen
+const VIEW_DESCRIPTIONS = {
+    home: '10b10t - A Minecraft anarchy server with a never-ending world since May 2025',
+    server: 'Live 10b10t server status: who is online, the player count graph and live chat.',
+    dupes: 'Dupes on 10b10t, the Minecraft anarchy server, and how to do them.',
+    news: 'News and updates from 10b10t, the Minecraft anarchy server.',
+    gallery: 'Screenshots from 10b10t, the Minecraft anarchy server.',
+    about: '10b10t statistics: world size, unique players and uptime.',
+    donate: 'Support 10b10t, the Minecraft anarchy server, and get cosmetic rewards.'
+};
 const VIEW_PATHS = Object.fromEntries(Object.entries(ROUTES).map(([path, view]) => [view, path]));
 const PATH_ALIASES = { '/about': '/stats', '/chat': '/server', '/index.html': '/', '/home': '/' };
 
@@ -920,8 +930,22 @@ function showView(id) {
     });
 
     document.title = target === 'home'
-        ? '10b10t'
+        ? '10b10t - Minecraft Anarchy Server'
         : `${VIEW_TITLES[target] || target} - 10b10t`;
+
+    // Each screen is its own page to search engines
+    const path = VIEW_PATHS[target];
+    if (path) {
+        let canonical = document.querySelector('link[rel="canonical"]');
+        if (!canonical) {
+            canonical = document.createElement('link');
+            canonical.rel = 'canonical';
+            document.head.appendChild(canonical);
+        }
+        canonical.href = `https://www.10b10t.com${path}`;
+        const description = document.querySelector('meta[name="description"]');
+        if (description && VIEW_DESCRIPTIONS[target]) description.content = VIEW_DESCRIPTIONS[target];
+    }
 
     const title = document.getElementById('view-title');
     if (title) title.textContent = VIEW_TITLES[target] || target;
