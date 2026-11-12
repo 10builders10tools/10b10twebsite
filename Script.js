@@ -835,11 +835,14 @@ async function updateLiveChat() {
                     second: '2-digit'
                 });
                 
+                // Everything from the API is escaped, names and ids included
+                const player = escapeHtml(String(msg.player));
+                const uuid = encodeURIComponent(String(msg.uuid));
                 msgEl.innerHTML = `
-                    <span class="chat-time">[${timeStr}]</span>
-                    <img src="https://mc-heads.net/avatar/${msg.uuid}/16" class="chat-head" alt="${msg.player}">
-                    <span class="chat-player">&lt;${msg.player}&gt;</span>
-                    <span class="chat-text">${escapeHtml(msg.message)}</span>
+                    <span class="chat-time">[${escapeHtml(timeStr)}]</span>
+                    <img src="https://mc-heads.net/avatar/${uuid}/16" class="chat-head" alt="${player}">
+                    <span class="chat-player">&lt;${player}&gt;</span>
+                    <span class="chat-text">${escapeHtml(String(msg.message))}</span>
                 `;
                 
                 chatContainer.appendChild(msgEl);
