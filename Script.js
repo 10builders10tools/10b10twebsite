@@ -1108,7 +1108,7 @@ function updateDonationMonth() {
 // game), so one login covers both. The session lives in an HttpOnly cookie that
 // this script never sees; it only asks /support/api/me who is logged in.
 
-let account = { me: null, returnFocus: null };
+let account = { me: null, returnFocus: null, mode: 'login', setupTimer: null };
 
 async function accountApi(url, body) {
     const options = { credentials: 'same-origin', cache: 'no-store' };
@@ -1167,9 +1167,11 @@ function renderAccount() {
         : 'Log in');
     btn.hidden = false;
 
-    document.getElementById('account-login').hidden = Boolean(me);
+    const resetting = !me && account.mode === 'reset';
+    document.getElementById('account-login').hidden = Boolean(me) || resetting;
+    document.getElementById('account-reset').hidden = !resetting;
     document.getElementById('account-me').hidden = !me;
-    document.getElementById('account-title').textContent = me ? 'Account' : 'Log in';
+    document.getElementById('account-title').textContent = me ? 'Account' : resetting ? 'New Password' : 'Log in';
     if (!me) return;
 
     const box = document.getElementById('account-me');
@@ -1187,7 +1189,7 @@ function renderAccount() {
             ['Deaths', Number(st.deaths).toLocaleString()],
             ['Player kills', Number(st.playerKills).toLocaleString()],
             ['Mob kills', Number(st.mobKills).toLocaleString()],
-            ['Alive for', st.deaths > 0 ? formatDuration(st.sinceDeath) : formatDuration(st.playtime)]
+            ['Alive for', formatDuration(st.sinceDeath)]
         ];
         const grid = statsSection.querySelector('.account-stat-grid');
         grid.textContent = '';
@@ -1261,7 +1263,137 @@ function closeAccount() {
     dialog.hidden = true;
     document.body.classList.remove('account-open');
     for (const msg of dialog.querySelectorAll('.account-msg')) msg.textContent = '';
+    stopSetupWatch();
     if (account.returnFocus && account.returnFocus.focus) account.returnFocus.focus();
+}
+
+// ---------- Website password reset ----------
+// Setup (logged in): the tickets service makes an authenticator secret and hands
+// it to the login plugin, which switches reset on only when the player confirms
+// with /webreset confirm in game. Reset (logged out): username + code + new
+// password go to the login plugin, which checks the code and sets the password.
+
+const SETUP_STATUS = {
+    waiting: 'Waiting for you to confirm in game...',
+    delivered: 'Waiting for you to confirm in game...',
+    confirmed: 'Done. Password reset is on for your account.',
+    'not-eligible': 'Your account is premium or Bedrock, so it has no 10b10t password to reset.',
+    expired: 'This setup expired. Press Set up to start again.',
+    failed: 'Something went wrong. Press Set up to try again.'
+};
+
+const RESET_ERRORS = {
+    invalid: 'That didn\'t work. Check your username and the code from your app. Password reset has to be set up and confirmed first.',
+    'weak-password': 'That password isn\'t allowed. Use at least 6 characters, and not a common password.',
+    'too-long': 'That password is too long.',
+    offline: 'The login server didn\'t answer. Try again in a few minutes.'
+};
+
+function stopSetupWatch() {
+    clearTimeout(account.setupTimer);
+    account.setupTimer = null;
+}
+
+function watchSetup(statusEl, started = Date.now()) {
+    stopSetupWatch();
+    account.setupTimer = setTimeout(async () => {
+        try {
+            const { ok, data } = await accountApi('/support/api/reset/setup');
+            if (ok && SETUP_STATUS[data.status]) statusEl.textContent = SETUP_STATUS[data.status];
+            if (ok && (data.status === 'waiting' || data.status === 'delivered') && Date.now() - started < 11 * 60 * 1000) {
+                watchSetup(statusEl, started);
+            }
+        } catch (e) {
+            watchSetup(statusEl, started); // a dropped request: keep watching
+        }
+    }, 3000);
+}
+
+function initPasswordReset(dialog) {
+    // Logged in: set up
+    const section = dialog.querySelector('.account-resetup');
+    const start = section.querySelector('.account-setup-start');
+    const box = section.querySelector('.account-setup');
+    const status = section.querySelector('.account-setup-status');
+    start.addEventListener('click', async () => {
+        start.disabled = true;
+        status.textContent = '';
+        try {
+            const { ok, data } = await accountApi('/support/api/reset/setup', {});
+            if (!ok) {
+                box.hidden = false;
+                section.querySelector('.account-qr').hidden = true;
+                status.textContent = data.error || 'Couldn\'t start the setup. Try again in a minute.';
+                return;
+            }
+            section.querySelector('.account-qr').hidden = false;
+            section.querySelector('.account-qr').src = data.qr;
+            section.querySelector('.account-secret').textContent = data.secret.replace(/(.{4})/g, '$1 ').trim();
+            status.textContent = SETUP_STATUS.waiting;
+            box.hidden = false;
+            start.textContent = 'Start again';
+            watchSetup(status);
+        } catch (e) {
+            box.hidden = false;
+            status.textContent = 'The login service can\'t be reached right now. Try again in a minute.';
+        } finally {
+            start.disabled = false;
+        }
+    });
+
+    // Logged out: forgot password
+    const form = document.getElementById('account-reset');
+    const msg = form.querySelector('.account-msg');
+    const showMode = mode => {
+        account.mode = mode;
+        renderAccount();
+        msg.textContent = '';
+        dialog.querySelector(mode === 'reset' ? '#reset-name' : '#account-code').focus();
+    };
+    dialog.querySelector('.account-forgot').addEventListener('click', () => showMode('reset'));
+    form.querySelector('.account-back').addEventListener('click', () => showMode('login'));
+
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const name = form.name.value.trim();
+        const code = form.code.value.replace(/\s/g, '');
+        const password = form.password.value;
+        if (!/^[A-Za-z0-9_.]{1,16}$/.test(name)) { msg.textContent = 'Enter your Minecraft username.'; return form.name.focus(); }
+        if (!/^\d{6}$/.test(code)) { msg.textContent = 'Enter the 6-digit code from your authenticator app.'; return form.code.focus(); }
+        if (password.length < 6) { msg.textContent = 'Use at least 6 characters for the new password.'; return form.password.focus(); }
+        if (password !== form.password2.value) { msg.textContent = 'The two passwords don\'t match.'; return form.password2.focus(); }
+
+        const submit = form.querySelector('.account-reset-submit');
+        submit.disabled = true;
+        msg.textContent = 'Checking...';
+        try {
+            const { ok, data } = await accountApi('/support/reset', { name, code, password });
+            if (!ok) { msg.textContent = data.error || 'That didn\'t work. Try again in a minute.'; return; }
+            const started = Date.now();
+            for (;;) {
+                await new Promise(r => setTimeout(r, 1500));
+                const res = await accountApi(`/support/reset/${encodeURIComponent(data.id)}`);
+                const state = res.ok ? res.data.state : 'failed';
+                if (state === 'done') {
+                    form.reset();
+                    msg.textContent = 'Password changed. Log in to the server with your new password.';
+                    return;
+                }
+                if (state === 'failed') {
+                    msg.textContent = RESET_ERRORS[res.data && res.data.error] || 'That didn\'t work. Try again in a minute.';
+                    form.code.value = '';
+                    return;
+                }
+                if (Date.now() - started > 90 * 1000) { msg.textContent = RESET_ERRORS.offline; return; }
+            }
+        } catch (err) {
+            msg.textContent = 'The login service can\'t be reached right now. Try again in a minute.';
+        } finally {
+            form.password.value = '';
+            form.password2.value = '';
+            submit.disabled = false;
+        }
+    });
 }
 
 function initAccount() {
@@ -1333,6 +1465,7 @@ function initAccount() {
         }
     });
 
+    initPasswordReset(dialog);
     loadAccount();
 }
 

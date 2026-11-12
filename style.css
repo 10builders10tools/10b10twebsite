@@ -2056,12 +2056,14 @@ body {
 	max-width: 440px;
 	max-height: 100%;
 	overflow-y: auto;
+	overflow-x: hidden;
+	padding: 1.25rem;
 }
 
 .account-head-row {
 	display: flex;
 	align-items: stretch;
-	margin: -1.5rem -1.5rem 1.25rem;
+	margin: -1.25rem -1.25rem 1.25rem;
 	background: var(--dark);
 	border-bottom: 3px solid var(--bevel-lo);
 }
@@ -2279,4 +2281,100 @@ body.account-open {
 	.account-stat-grid {
 		grid-template-columns: repeat(2, 1fr);
 	}
+}
+
+/* ---------- Account: password reset ---------- */
+
+.account-link {
+	display: block;
+	margin-top: 0.9rem;
+	padding: 0.2rem 0;
+	font: inherit;
+	font-size: 0.85rem;
+	color: var(--text-muted);
+	background: none;
+	border: 0;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.account-link:hover,
+.account-link:focus-visible {
+	color: var(--secondary);
+	outline: none;
+}
+
+.account-reset p {
+	font-size: 0.92rem;
+	line-height: 1.55;
+	margin-bottom: 0.9rem;
+}
+
+.account-reset .account-label {
+	margin-top: 0.7rem;
+}
+
+.account-input {
+	display: block;
+	width: 100%;
+	min-height: 44px;
+	font: inherit;
+	font-size: 1rem;
+	color: var(--text);
+	background: #000;
+	border: 3px solid;
+	border-color: var(--bevel-lo) var(--bevel-hi) var(--bevel-hi) var(--bevel-lo);
+	padding: 0.4rem 0.7rem;
+}
+
+.account-input:focus {
+	outline: none;
+	border-color: var(--secondary);
+}
+
+.account-reset-submit {
+	width: 100%;
+	margin-top: 1.1rem;
+}
+
+.account-reset-submit:disabled,
+.account-setup-start:disabled {
+	opacity: 0.6;
+	cursor: wait;
+}
+
+.account-resetup .account-note {
+	margin: 0 0 0.6rem;
+}
+
+.account-setup {
+	margin: 0.8rem 0;
+}
+
+.account-setup[hidden] {
+	display: none;
+}
+
+.account-qr {
+	display: block;
+	width: 200px;
+	height: 200px;
+	margin: 0.4rem auto 0.7rem;
+	image-rendering: pixelated;
+	border: 3px solid var(--bevel-hi);
+}
+
+.account-qr[hidden] {
+	display: none;
+}
+
+.account-secret {
+	overflow-wrap: anywhere;
+	color: var(--text);
+}
+
+.account-setup-status {
+	font-size: 0.9rem;
+	color: var(--secondary);
+	min-height: 1.4em;
 }

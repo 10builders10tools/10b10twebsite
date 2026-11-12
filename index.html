@@ -22,7 +22,7 @@
     <meta name="twitter:image" content="https://www.10b10t.com/images/og-card-2.jpg">
     <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
     <link href="https://fonts.cdnfonts.com/css/minecraft-4" rel="stylesheet">
-    <link href="/style.css?v=37" rel="stylesheet">
+    <link href="/style.css?v=39" rel="stylesheet">
 </head>
 <body>
 <div class="game">
@@ -448,6 +448,22 @@
                 <button type="submit" class="mc-btn">Log in</button>
             </div>
             <p class="account-msg" role="alert"></p>
+            <button type="button" class="account-link account-forgot">Forgot your server password?</button>
+        </form>
+
+        <form class="account-reset" id="account-reset" novalidate hidden>
+            <p>Set a new server password with your authenticator app. This only works if you set up password reset in this menu and confirmed it in game.</p>
+            <label class="account-label" for="reset-name">Username</label>
+            <input class="account-input" type="text" id="reset-name" name="name" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="16" required>
+            <label class="account-label" for="reset-code">Code from your app</label>
+            <input class="account-input" type="text" id="reset-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" required>
+            <label class="account-label" for="reset-password">New password</label>
+            <input class="account-input" type="password" id="reset-password" name="password" autocomplete="new-password" maxlength="128" required>
+            <label class="account-label" for="reset-password2">New password again</label>
+            <input class="account-input" type="password" id="reset-password2" name="password2" autocomplete="new-password" maxlength="128" required>
+            <button type="submit" class="mc-btn account-reset-submit">Change password</button>
+            <p class="account-msg" role="alert"></p>
+            <button type="button" class="account-link account-back">Back to log in</button>
         </form>
 
         <div class="account-me" id="account-me" hidden>
@@ -468,12 +484,28 @@
                 <a href="/support" class="mini-btn account-tickets-link">Open Tickets</a>
             </section>
 
+            <section class="account-section account-resetup">
+                <h3 class="account-section-title">Password Reset</h3>
+                <p class="account-note">Lets you set a new server password here if you forget it, using an authenticator app like Google Authenticator. Premium and Bedrock accounts don't have a 10b10t password, so they can't use it.</p>
+                <button type="button" class="mini-btn account-setup-start">Set up</button>
+                <div class="account-setup" hidden>
+                    <ol class="account-steps">
+                        <li>Scan this with your authenticator app.</li>
+                        <li>In game, type <code>/webreset confirm</code> and the 6-digit code from the app, within 10 minutes.</li>
+                    </ol>
+                    <img class="account-qr" alt="QR code for your authenticator app" width="200" height="200">
+                    <p class="account-note">Can't scan? Enter this key in the app: <code class="account-secret"></code></p>
+                    <p class="account-setup-status" role="status"></p>
+                </div>
+                <p class="account-note">Setting it up again replaces the old one. Turn it off in game with <code>/webreset off</code>.</p>
+            </section>
+
             <button type="button" class="mc-btn account-logout">Log out</button>
             <p class="account-msg account-me-msg" role="alert"></p>
         </div>
     </div>
 </div>
 
-<script src="/Script.js?v=37"></script>
+<script src="/Script.js?v=39"></script>
 </body>
 </html>

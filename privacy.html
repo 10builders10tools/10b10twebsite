@@ -22,7 +22,7 @@
     <link rel="canonical" href="https://www.10b10t.com/privacy">
     <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
     <link href="https://fonts.cdnfonts.com/css/minecraft-4" rel="stylesheet">
-    <link href="/style.css?v=37" rel="stylesheet">
+    <link href="/style.css?v=39" rel="stylesheet">
 </head>
 <body>
 <div class="game">
@@ -78,6 +78,12 @@
             </section>
 
             <section class="mc-panel terms-card">
+                <h3 class="panel-title">Password Reset</h3>
+                <p>If you set up password reset in the account menu and confirm it in game, the login server stores an authenticator secret for your account. It is used only to check the codes from your app when you reset your password on the website. Turning reset off with <code>/webreset off</code> deletes it.</p>
+                <p>When you reset your password, the website passes your username, the code and your new password to the login server. The website keeps none of them: they are held in memory for a few seconds until the login server collects them, and are never saved or logged. The login server stores your new password hashed, the same as a password set in game.</p>
+            </section>
+
+            <section class="mc-panel terms-card">
                 <h3 class="panel-title">Third-Party Services</h3>
                 <p>Some things are handled by third parties with their own privacy policies:</p>
                 <ul>
@@ -123,6 +129,6 @@
     </nav>
 </div>
 
-<script src="/Script.js?v=37"></script>
+<script src="/Script.js?v=39"></script>
 </body>
 </html>
