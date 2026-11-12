@@ -1491,25 +1491,38 @@ body {
 
 /* ---------- Phones ---------- */
 
-/* Tickets everywhere; Terms and Privacy only on phones, where they leave the hotbar */
+/* Terms and Privacy as small game buttons under the Server IP. Phones only: on
+   desktop they are already in the hotbar. */
 .legal-links {
-	margin-top: 1rem;
-	font-size: 0.8rem;
-	color: var(--text-muted);
-}
-
-.legal-links a {
-	display: inline-block;
-	padding: 0.5rem 0.75rem;
-	color: var(--text-muted);
-}
-
-.legal-links a:hover {
-	color: var(--secondary);
-}
-
-.phone-only {
 	display: none;
+}
+
+.mini-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-family: var(--display);
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	text-decoration: none;
+	color: var(--text);
+	background: var(--dark-lighter);
+	border: 3px solid;
+	border-color: var(--bevel-hi) var(--bevel-lo) var(--bevel-lo) var(--bevel-hi);
+	padding: 0.4rem 0.9rem;
+	min-height: 40px;
+	text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+}
+
+.mini-btn:hover,
+.mini-btn:focus-visible {
+	border-color: var(--secondary);
+	outline: none;
+}
+
+.mini-btn:active {
+	border-color: var(--bevel-lo) var(--bevel-hi) var(--bevel-hi) var(--bevel-lo);
 }
 
 /* Use the visible screen height so mobile browser bars never cover the hotbar */
@@ -1580,14 +1593,11 @@ body {
 		white-space: nowrap;
 	}
 
-	.phone-only {
-		display: inline;
-	}
-
-	.legal-links a {
-		display: inline-block;
-		padding: 0.5rem 0.75rem;
-		color: var(--text-muted);
+	.legal-links {
+		display: flex;
+		justify-content: center;
+		gap: 0.5rem;
+		margin-top: 1rem;
 	}
 
 	/* Server entry: name and signal on one row, readout in a row below */
@@ -1659,9 +1669,6 @@ body {
 		overflow-wrap: anywhere;
 	}
 
-	.legal-links a {
-		padding: 0.7rem 0.9rem;
-	}
 }
 
 /* A grid track sized 1fr cannot shrink below its widest content; minmax(0, 1fr)
@@ -1728,7 +1735,7 @@ body {
 	}
 
 	.legal-links {
-		margin-top: 0.4rem;
+		margin-top: 0.75rem;
 	}
 }
 
@@ -1755,11 +1762,11 @@ body {
 	}
 
 	.legal-links {
-		margin-top: 0.2rem;
+		margin-top: 0.3rem;
 	}
 
-	.legal-links a {
-		padding: 0.55rem 0.9rem;
+	.mini-btn {
+		min-height: 36px;
 	}
 }
 
