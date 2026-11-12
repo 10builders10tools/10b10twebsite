@@ -151,6 +151,62 @@ body {
 	grid-column: 1 / -1;
 }
 
+/* ---------- Not found: the death screen ---------- */
+
+body.death-page {
+	background-image:
+		linear-gradient(rgba(100, 0, 0, 0.72), rgba(50, 0, 0, 0.88)),
+		url('images/1.png');
+	background-attachment: scroll, fixed;
+}
+
+.death-screen {
+	min-height: 100vh;
+	min-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	padding: 2rem 1rem;
+}
+
+.death-title {
+	font-family: var(--display);
+	font-size: clamp(2.6rem, 10vw, 5rem);
+	font-weight: normal;
+	color: #fff;
+	letter-spacing: 0.04em;
+	text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.75);
+	-webkit-font-smoothing: none;
+	margin-bottom: 1.5rem;
+}
+
+.death-message,
+.death-score {
+	font-family: var(--display);
+	font-size: clamp(0.95rem, 2.6vw, 1.15rem);
+	color: #fff;
+	text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.75);
+	-webkit-font-smoothing: none;
+}
+
+.death-score {
+	margin: 0.75rem 0 2.5rem;
+}
+
+.death-score span {
+	color: var(--secondary);
+}
+
+.death-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	width: 100%;
+	max-width: 400px;
+}
+
 /* ---------- Title screen ---------- */
 
 .title-screen {

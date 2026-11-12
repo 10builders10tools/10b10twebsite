@@ -93,6 +93,27 @@ function updateHeroMOTD() {
     }
 }
 
+// The "not found" page picks a death message for the missing page
+const DEATH_MESSAGES = [
+    'This page fell out of the world',
+    'This page was blown up by a creeper',
+    'This page tried to swim in lava',
+    'This page was slain by a broken link',
+    'This page hit the ground too hard',
+    'This page was griefed',
+    'This page was killed by an end crystal',
+    'This page drowned',
+    'This page went off with a bang',
+    'This page starved to death',
+    'This page was pricked to death',
+    'This page walked into the void'
+];
+
+function updateDeathMessage() {
+    const el = document.getElementById('death-message');
+    if (el) el.textContent = DEATH_MESSAGES[Math.floor(Math.random() * DEATH_MESSAGES.length)];
+}
+
 // Built-in images, then any uploaded from the admin page (listed in
 // /uploads/gallery.json, which the admin service maintains on the VPS)
 const builtInGallery = [
@@ -1059,6 +1080,7 @@ function updateDonationMonth() {
 
 document.addEventListener('DOMContentLoaded', () => {
     updateHeroMOTD();
+    updateDeathMessage();
     initGallery();
     loadNews();
     initCopyButton();
