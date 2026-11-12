@@ -105,8 +105,8 @@ const builtInGallery = [
 ];
 
 let galleryImages = builtInGallery.map(name => ({
-    src: `images/${name}`,
-    thumb: `images/${name}`,
+    src: `/images/${name}`,
+    thumb: `/images/${name}`,
     alt: name.replace('.png', '').replace('_', ' '),
     caption: ''
 }));
@@ -862,6 +862,25 @@ const VIEW_ALIASES = {
     chat: 'server'
 };
 
+// Clean URLs: www.10b10t.com/news instead of index.html#news.
+// The VPS serves index.html for exactly these paths.
+const ROUTES = {
+    '/': 'home',
+    '/server': 'server',
+    '/dupes': 'dupes',
+    '/news': 'news',
+    '/gallery': 'gallery',
+    '/stats': 'about',
+    '/donate': 'donate'
+};
+const VIEW_PATHS = Object.fromEntries(Object.entries(ROUTES).map(([path, view]) => [view, path]));
+const PATH_ALIASES = { '/about': '/stats', '/chat': '/server', '/index.html': '/', '/home': '/' };
+
+function cleanPath(pathname) {
+    let path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+    return PATH_ALIASES[path] || path;
+}
+
 function showView(id) {
     const target = VIEW_ALIASES[id] || id;
     const view = document.getElementById(target);
@@ -876,8 +895,7 @@ function showView(id) {
     });
 
     document.querySelectorAll('.nav-link').forEach(link => {
-        const href = link.getAttribute('href');
-        link.classList.toggle('active', href === `#${target}`);
+        link.classList.toggle('active', link.getAttribute('href') === VIEW_PATHS[target]);
     });
 
     document.title = target === 'home'
@@ -893,14 +911,50 @@ function showView(id) {
     if (target === 'server') scrollChatToBottom();
 }
 
-function routeFromHash() {
-    const id = (location.hash || '#home').substring(1);
-    showView(id || 'home');
+function routeFromLocation() {
+    showView(ROUTES[cleanPath(location.pathname)] || 'home');
+}
+
+// Moves to a screen without reloading the page
+function goTo(path) {
+    if (path !== location.pathname) history.pushState(null, '', path);
+    routeFromLocation();
 }
 
 function initRouter() {
-    window.addEventListener('hashchange', routeFromHash);
-    routeFromHash();
+    // Only the main page has screens; the legal pages keep normal links
+    if (!document.getElementById('home')) {
+        const legal = /^\/(terms|privacy)\.html$/.exec(location.pathname);
+        if (legal) history.replaceState(null, '', `/${legal[1]}${location.search}${location.hash}`);
+        return;
+    }
+
+    // Old links (index.html#news, /#chat, /about, /news/) become the clean address
+    const normalize = () => {
+        const hashView = location.hash.substring(1);
+        let path = cleanPath(location.pathname);
+        if (hashView && (VIEW_PATHS[VIEW_ALIASES[hashView] || hashView])) {
+            path = VIEW_PATHS[VIEW_ALIASES[hashView] || hashView];
+        }
+        if (path !== location.pathname || location.hash) {
+            history.replaceState(null, '', path + location.search);
+        }
+    };
+    normalize();
+
+    document.addEventListener('click', e => {
+        if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        const link = e.target.closest('a[href]');
+        if (!link || link.target === '_blank' || link.origin !== location.origin) return;
+        const target = cleanPath(link.pathname);
+        if (!(target in ROUTES) || link.hash) return;
+        e.preventDefault();
+        goTo(target);
+    });
+    window.addEventListener('popstate', routeFromLocation);
+    // An old #link typed or clicked while the page is already open
+    window.addEventListener('hashchange', () => { normalize(); routeFromLocation(); });
+    routeFromLocation();
 }
 
 /* Phones: keep the pinned hotbar above the browser's toolbar.
@@ -955,9 +1009,9 @@ function initHotbarKeys() {
         const href = slots[n - 1].getAttribute('href');
         if (!href) return;
 
-        // Slots 8 and 9 are the legal pages: a real navigation, not a hash change
-        if (href.startsWith('#')) {
-            location.hash = href;
+        // Screens switch in place; the legal pages (slots 8 and 9) are real page loads
+        if (href in ROUTES && document.getElementById('home')) {
+            goTo(href);
         } else {
             location.href = href;
         }
