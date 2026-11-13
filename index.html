@@ -22,7 +22,7 @@
     <meta name="twitter:image" content="https://www.10b10t.com/images/og-card-2.jpg">
     <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
     <link href="https://fonts.cdnfonts.com/css/minecraft-4" rel="stylesheet">
-    <link href="/style.css?v=41" rel="stylesheet">
+    <link href="/style.css?v=42" rel="stylesheet">
 </head>
 <body>
 <div class="game">
@@ -337,6 +337,18 @@
         <section id="about" class="view">
             <h2 class="screen-title">Statistics</h2>
 
+            <div class="tab-row" role="tablist">
+                <button type="button" class="mini-btn tab-btn is-on" role="tab" aria-selected="true" aria-controls="stats-server" data-pane="stats-server">Server</button>
+                <button type="button" class="mini-btn tab-btn" role="tab" aria-selected="false" aria-controls="stats-board" data-pane="stats-board">Leaderboard</button>
+            </div>
+
+            <div class="stats-pane" id="stats-board" role="tabpanel" hidden>
+                <div class="board-cats"></div>
+                <ol class="board-list"></ol>
+                <p class="board-note">Only players who chose to be listed are shown. To add yourself, log in on the main menu and open your account.</p>
+            </div>
+
+            <div class="stats-pane" id="stats-server" role="tabpanel">
             <div class="stat-rows">
                 <div class="stat">
                     <span class="stat-label">World Size</span>
@@ -366,6 +378,7 @@
                         <div class="hardware-item"><span class="hw-label">Storage</span><span class="hw-value">30TB HDD Array</span></div>
                     </div>
                 </section>
+            </div>
             </div>
         </section>
 
@@ -478,6 +491,17 @@
                 <p class="account-note account-stats-when"></p>
             </section>
 
+            <section class="account-section account-dupes" hidden>
+                <h3 class="account-section-title">Dupes</h3>
+                <ul class="dupe-list"></ul>
+            </section>
+
+            <section class="account-section account-board">
+                <h3 class="account-section-title">Leaderboard</h3>
+                <p class="account-note account-board-note"></p>
+                <button type="button" class="mini-btn account-board-toggle"></button>
+            </section>
+
             <section class="account-section">
                 <h3 class="account-section-title">Tickets</h3>
                 <ul class="account-tickets"></ul>
@@ -506,6 +530,6 @@
     </div>
 </div>
 
-<script src="/Script.js?v=41"></script>
+<script src="/Script.js?v=42"></script>
 </body>
 </html>

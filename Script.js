@@ -1134,6 +1134,14 @@ function formatDuration(seconds) {
     return `${m}m`;
 }
 
+// Playtime as hours, the way dupe requirements are written
+function formatHours(seconds) {
+    const s = Math.max(0, Math.floor(Number(seconds) || 0));
+    const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+    if (h === 0) return `${m}m`;
+    return m > 0 && h < 10 ? `${h}h ${m}m` : `${h}h`;
+}
+
 function formatAgo(ms) {
     const s = Math.max(0, (Date.now() - ms) / 1000);
     if (s < 90) return 'just now';
@@ -1208,6 +1216,37 @@ function renderAccount() {
         statsSection.querySelector('.account-stats-when').textContent =
             me.statsAt ? `Updated ${formatAgo(me.statsAt)}. Type /support in game to refresh them.` : '';
     }
+
+    // Dupes: progress toward each one's playtime, soonest first
+    const dupeSection = box.querySelector('.account-dupes');
+    const dupes = st && Array.isArray(me.dupes) ? [...me.dupes].sort((a, b) => a.required - b.required) : [];
+    dupeSection.hidden = dupes.length === 0;
+    const dupeList = dupeSection.querySelector('.dupe-list');
+    dupeList.textContent = '';
+    for (const d of dupes) {
+        const done = st.playtime >= d.required;
+        const li = document.createElement('li');
+        li.className = done ? 'dupe is-done' : 'dupe';
+        const name = document.createElement('span');
+        name.className = 'dupe-name';
+        name.textContent = d.name.replace(/ Dupe$/, '');
+        const state = document.createElement('span');
+        state.className = 'dupe-state';
+        state.textContent = done ? 'Unlocked' : `${formatHours(st.playtime)} of ${formatHours(d.required)}`;
+        const bar = document.createElement('span');
+        bar.className = 'dupe-bar';
+        const fill = document.createElement('span');
+        fill.style.width = `${done ? 100 : Math.floor(st.playtime / d.required * 100)}%`;
+        bar.appendChild(fill);
+        li.append(name, state, bar);
+        dupeList.appendChild(li);
+    }
+
+    // Leaderboard: listed only if they switch it on
+    box.querySelector('.account-board-note').textContent = me.leaderboard
+        ? 'You are on the public leaderboard. Your name, skin and stats are shown there.'
+        : 'Show your name, skin and stats on the public leaderboard. It is off unless you turn it on.';
+    box.querySelector('.account-board-toggle').textContent = me.leaderboard ? 'Take me off' : 'Put me on';
 
     // Tickets: the newest few, newest first
     const list = box.querySelector('.account-tickets');
@@ -1468,8 +1507,115 @@ function initAccount() {
         }
     });
 
+    dialog.querySelector('.account-board-toggle').addEventListener('click', async e => {
+        const button = e.currentTarget;
+        button.disabled = true;
+        meMsg.textContent = '';
+        try {
+            const { ok, data } = await accountApi('/support/api/leaderboard', { show: !account.me.leaderboard });
+            if (!ok) throw new Error(data.error || '');
+            account.me.leaderboard = data.leaderboard;
+            leaderboard.loadedAt = 0; // the board changed
+            renderAccount();
+        } catch (err) {
+            meMsg.textContent = err.message || 'Couldn\'t change that right now. Try again in a minute.';
+        } finally {
+            button.disabled = false;
+        }
+    });
+
     initPasswordReset(dialog);
     loadAccount();
+}
+
+// ---------- Leaderboard (Statistics screen) ----------
+// Lists only players who switched it on in their account menu.
+
+const leaderboard = { data: null, loadedAt: 0, cat: 'playtime' };
+
+function renderLeaderboard() {
+    const pane = document.getElementById('stats-board');
+    const list = pane.querySelector('.board-list');
+    const cats = pane.querySelector('.board-cats');
+    const data = leaderboard.data;
+    list.textContent = '';
+    cats.textContent = '';
+    if (!data) {
+        const li = document.createElement('li');
+        li.className = 'board-empty';
+        li.textContent = 'The leaderboard can\'t be loaded right now.';
+        list.appendChild(li);
+        return;
+    }
+    for (const [key, label] of Object.entries(data.labels)) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = key === leaderboard.cat ? 'mini-btn tab-btn is-on' : 'mini-btn tab-btn';
+        b.textContent = label;
+        b.setAttribute('aria-pressed', String(key === leaderboard.cat));
+        b.addEventListener('click', () => { leaderboard.cat = key; renderLeaderboard(); });
+        cats.appendChild(b);
+    }
+    const rows = data.boards[leaderboard.cat] || [];
+    if (rows.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'board-empty';
+        li.textContent = 'Nobody is listed yet. Be the first.';
+        list.appendChild(li);
+    }
+    rows.forEach((row, i) => {
+        const li = document.createElement('li');
+        li.className = 'board-row';
+        const rank = document.createElement('span');
+        rank.className = 'board-rank';
+        rank.textContent = `#${i + 1}`;
+        const head = document.createElement('span');
+        head.className = 'mc-head';
+        head.setAttribute('aria-hidden', 'true');
+        if (row.skin) {
+            head.classList.add('has-skin');
+            head.style.backgroundImage = `url("/support/leaderboard/face/${encodeURIComponent(row.skin)}")`;
+        } else {
+            head.textContent = row.name.replace(/^\./, '').charAt(0).toUpperCase();
+        }
+        const name = document.createElement('span');
+        name.className = 'board-name';
+        name.textContent = row.name;
+        const value = document.createElement('span');
+        value.className = 'board-value';
+        value.textContent = leaderboard.cat === 'playtime' ? formatHours(row.value) : Number(row.value).toLocaleString();
+        li.append(rank, head, name, value);
+        list.appendChild(li);
+    });
+}
+
+async function loadLeaderboard() {
+    if (leaderboard.data && Date.now() - leaderboard.loadedAt < 60000) return renderLeaderboard();
+    try {
+        const res = await fetch('/support/leaderboard', { cache: 'no-cache' });
+        if (!res.ok) throw new Error('bad status');
+        leaderboard.data = await res.json();
+        leaderboard.loadedAt = Date.now();
+    } catch (e) {
+        leaderboard.data = null;
+    }
+    renderLeaderboard();
+}
+
+function initLeaderboard() {
+    const tabs = [...document.querySelectorAll('#about .tab-row .tab-btn')];
+    if (tabs.length === 0) return;
+    for (const tab of tabs) {
+        tab.addEventListener('click', () => {
+            for (const t of tabs) {
+                const on = t === tab;
+                t.classList.toggle('is-on', on);
+                t.setAttribute('aria-selected', String(on));
+                document.getElementById(t.dataset.pane).hidden = !on;
+            }
+            if (tab.dataset.pane === 'stats-board') loadLeaderboard();
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1482,6 +1628,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initHotbarKeys();
     initRouter();
     initAccount();
+    initLeaderboard();
     initHotbarLift();
     initGraphs();
     updateServerStatus();

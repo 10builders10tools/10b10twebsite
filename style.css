@@ -2378,3 +2378,138 @@ body.account-open {
 	color: var(--secondary);
 	min-height: 1.4em;
 }
+
+/* ---------- Statistics tabs and leaderboard ---------- */
+
+.tab-row,
+.board-cats {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.5rem;
+	margin: 1rem 0 1.25rem;
+}
+
+.board-cats {
+	margin: 0 0 0.9rem;
+}
+
+.tab-btn {
+	cursor: pointer;
+}
+
+.tab-btn.is-on {
+	color: var(--dark);
+	background: var(--secondary);
+	text-shadow: none;
+}
+
+.stats-pane[hidden] {
+	display: none;
+}
+
+.board-list {
+	list-style: none;
+	max-width: 640px;
+	margin: 0 auto;
+}
+
+.board-row {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.4rem 0.75rem;
+	margin-bottom: 0.3rem;
+	background: var(--dark-light);
+	border: 3px solid;
+	border-color: var(--bevel-hi) var(--bevel-lo) var(--bevel-lo) var(--bevel-hi);
+}
+
+.board-rank {
+	flex: 0 0 2.6rem;
+	font-family: var(--display);
+	font-size: 0.85rem;
+	color: var(--text-muted);
+}
+
+.board-row:nth-child(-n+3) .board-rank {
+	color: var(--secondary);
+}
+
+.board-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.board-value {
+	flex: 0 0 auto;
+	font-family: var(--display);
+	font-size: 0.9rem;
+}
+
+.board-empty,
+.board-note {
+	text-align: center;
+	color: var(--text-muted);
+	font-size: 0.88rem;
+}
+
+.board-empty {
+	padding: 1.5rem 0;
+}
+
+.board-note {
+	max-width: 640px;
+	margin: 1rem auto 0;
+}
+
+/* ---------- Account: dupe progress ---------- */
+
+.dupe-list {
+	list-style: none;
+}
+
+.dupe {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 0.15rem 0.75rem;
+	margin-bottom: 0.55rem;
+	font-size: 0.88rem;
+}
+
+.dupe-state {
+	color: var(--text-muted);
+	font-size: 0.8rem;
+}
+
+.dupe.is-done .dupe-state {
+	color: var(--success);
+}
+
+.dupe-bar {
+	grid-column: 1 / -1;
+	height: 8px;
+	background: #000;
+	border: 2px solid var(--bevel-lo);
+}
+
+.dupe-bar span {
+	display: block;
+	height: 100%;
+	background: var(--primary);
+}
+
+.dupe.is-done .dupe-bar span {
+	background: var(--success);
+}
+
+.account-board .account-note {
+	margin: 0 0 0.6rem;
+}
+
+.account-board-toggle {
+	cursor: pointer;
+}
