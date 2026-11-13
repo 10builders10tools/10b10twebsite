@@ -2379,19 +2379,14 @@ body.account-open {
 	min-height: 1.4em;
 }
 
-/* ---------- Statistics tabs and leaderboard ---------- */
+/* ---------- Leaderboard ---------- */
 
-.tab-row,
 .board-cats {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: center;
 	gap: 0.5rem;
-	margin: 1rem 0 1.25rem;
-}
-
-.board-cats {
-	margin: 0 0 0.9rem;
+	margin: 1.25rem 0 0.9rem;
 }
 
 .tab-btn {
@@ -2402,10 +2397,6 @@ body.account-open {
 	color: var(--dark);
 	background: var(--secondary);
 	text-shadow: none;
-}
-
-.stats-pane[hidden] {
-	display: none;
 }
 
 .board-list {
@@ -2512,4 +2503,41 @@ body.account-open {
 
 .account-board-toggle {
 	cursor: pointer;
+}
+
+/* Short desktop windows: tighten the title screen so the menu and Server IP
+   still fit above the hotbar without scrolling */
+@media (min-width: 601px) and (max-height: 820px) {
+	.title-logo {
+		font-size: clamp(2rem, 6vw, 3.2rem);
+		margin-bottom: 0.6rem;
+	}
+
+	.hero-subtitle {
+		margin-bottom: 1rem;
+	}
+
+	.menu-buttons {
+		gap: 0.5rem;
+		margin-bottom: 1rem;
+	}
+
+	.title-screen .mc-btn {
+		padding: 0.55rem 1.25rem;
+	}
+}
+
+@media (min-width: 601px) and (max-height: 660px) {
+	.title-logo {
+		font-size: 2rem;
+	}
+
+	.title-screen .mc-btn {
+		padding: 0.35rem 1.25rem;
+		font-size: 0.85rem;
+	}
+
+	.hero-subtitle {
+		margin-bottom: 0.6rem;
+	}
 }

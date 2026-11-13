@@ -878,6 +878,7 @@ const VIEW_TITLES = {
     news: 'News',
     gallery: 'Gallery',
     about: 'Statistics',
+    leaderboard: 'Leaderboard',
     donate: 'Support the Server'
 };
 
@@ -895,6 +896,7 @@ const ROUTES = {
     '/news': 'news',
     '/gallery': 'gallery',
     '/stats': 'about',
+    '/leaderboard': 'leaderboard',
     '/donate': 'donate'
 };
 // What search engines show for each screen
@@ -905,6 +907,7 @@ const VIEW_DESCRIPTIONS = {
     news: 'News and updates from 10b10t, the Minecraft anarchy server.',
     gallery: 'Screenshots from 10b10t, the Minecraft anarchy server.',
     about: '10b10t statistics: world size, unique players and uptime.',
+    leaderboard: 'The 10b10t leaderboard: top playtime, player kills, mob kills and deaths.',
     donate: 'Support 10b10t, the Minecraft anarchy server, and get cosmetic rewards.'
 };
 const VIEW_PATHS = Object.fromEntries(Object.entries(ROUTES).map(([path, view]) => [view, path]));
@@ -957,6 +960,7 @@ function showView(id) {
 
     // scrollHeight is 0 while a screen is hidden, so pin the chat once visible
     if (target === 'server') scrollChatToBottom();
+    if (target === 'leaderboard') loadLeaderboard();
 }
 
 function routeFromLocation() {
@@ -1242,11 +1246,11 @@ function renderAccount() {
         dupeList.appendChild(li);
     }
 
-    // Leaderboard: listed only if they switch it on
+    // Leaderboard: everyone is listed unless they hide themselves
     box.querySelector('.account-board-note').textContent = me.leaderboard
-        ? 'You are on the public leaderboard. Your name, skin and stats are shown there.'
-        : 'Show your name, skin and stats on the public leaderboard. It is off unless you turn it on.';
-    box.querySelector('.account-board-toggle').textContent = me.leaderboard ? 'Take me off' : 'Put me on';
+        ? 'You are on the public leaderboard, like everyone who plays. Your name, skin and stats can show there.'
+        : 'You are hidden from the public leaderboard.';
+    box.querySelector('.account-board-toggle').textContent = me.leaderboard ? 'Hide me' : 'Show me again';
 
     // Tickets: the newest few, newest first
     const list = box.querySelector('.account-tickets');
@@ -1528,13 +1532,14 @@ function initAccount() {
     loadAccount();
 }
 
-// ---------- Leaderboard (Statistics screen) ----------
-// Lists only players who switched it on in their account menu.
+// ---------- Leaderboard ----------
+// Everyone who plays is listed, unless they hide themselves in their account menu.
 
 const leaderboard = { data: null, loadedAt: 0, cat: 'playtime' };
 
 function renderLeaderboard() {
-    const pane = document.getElementById('stats-board');
+    const pane = document.getElementById('leaderboard');
+    if (!pane) return;
     const list = pane.querySelector('.board-list');
     const cats = pane.querySelector('.board-cats');
     const data = leaderboard.data;
@@ -1560,7 +1565,7 @@ function renderLeaderboard() {
     if (rows.length === 0) {
         const li = document.createElement('li');
         li.className = 'board-empty';
-        li.textContent = 'Nobody is listed yet. Be the first.';
+        li.textContent = 'Nobody is listed here yet.';
         list.appendChild(li);
     }
     rows.forEach((row, i) => {
@@ -1602,22 +1607,6 @@ async function loadLeaderboard() {
     renderLeaderboard();
 }
 
-function initLeaderboard() {
-    const tabs = [...document.querySelectorAll('#about .tab-row .tab-btn')];
-    if (tabs.length === 0) return;
-    for (const tab of tabs) {
-        tab.addEventListener('click', () => {
-            for (const t of tabs) {
-                const on = t === tab;
-                t.classList.toggle('is-on', on);
-                t.setAttribute('aria-selected', String(on));
-                document.getElementById(t.dataset.pane).hidden = !on;
-            }
-            if (tab.dataset.pane === 'stats-board') loadLeaderboard();
-        });
-    }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     updateHeroMOTD();
     updateDeathMessage();
@@ -1628,7 +1617,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initHotbarKeys();
     initRouter();
     initAccount();
-    initLeaderboard();
     initHotbarLift();
     initGraphs();
     updateServerStatus();
