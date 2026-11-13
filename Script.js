@@ -1280,7 +1280,7 @@ const SETUP_STATUS = {
     waiting: 'Waiting for you to confirm in game...',
     delivered: 'Waiting for you to confirm in game...',
     confirmed: 'Done. Password reset is on for your account.',
-    'not-eligible': 'Your account is premium or Bedrock, so it has no 10b10t password to reset.',
+    'not-eligible': 'Your account is premium, so it has no 10b10t password to reset.',
     expired: 'This setup expired. Press Set up to start again.',
     failed: 'Something went wrong. Press Set up to try again.'
 };
